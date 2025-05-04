@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1026738841199",
+    "project_id": "chatbot-f5969",
+    "storage_bucket": "chatbot-f5969.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1026738841199:android:4c8914b89d507a8d418f9a",
+        "android_client_info": {
+          "package_name": "com.example.hotel_assistant"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBq3-5AerWKZgqTUkfX2-DDVIePzyfyeOo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
