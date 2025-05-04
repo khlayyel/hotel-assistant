@@ -542,12 +542,15 @@ class ChatScreenState extends State<ChatScreen> {
             }
           }),
         );
+        print('Réponse brute de l\'API résumé : ' + summaryResponse.body);
         final summaryData = jsonDecode(summaryResponse.body);
+        print('Données décodées de l\'API résumé : ' + summaryData.toString());
         String summary = '';
-        if (summaryData['status'] == 'succeeded' && summaryData['output'] != null && summaryData['output'].isNotEmpty) {
+        if (summaryData.containsKey('status') && summaryData['status'] == 'succeeded' && summaryData['output'] != null && summaryData['output'].isNotEmpty) {
           summary = summaryData['output'][0];
         } else {
-          summary = 'Erreur : aucun résumé généré.';
+          print('Erreur : champ attendu manquant ou vide dans summaryData. summaryData = ' + summaryData.toString());
+          summary = 'Erreur : aucun résumé généré.\nDétail technique : ' + summaryData.toString();
         }
         print('Résumé généré : $summary');
         // Envoi de la notification email à tous les réceptionnistes de l'hôtel choisi
