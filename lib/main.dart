@@ -11,6 +11,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'screens/gestion_hotels_screen.dart'; // Nouvel import
 import 'package:dropdown_search/dropdown_search.dart';
 import 'config/environment.dart';
+import 'dart:html' as html;
 
 void main() async{
     WidgetsFlutterBinding.ensureInitialized();
@@ -72,6 +73,33 @@ class ChatScreenState extends State<ChatScreen> {
     super.initState();
     _loadClientInfo();
     _hotelSearchController.addListener(_onHotelInputChanged);
+    if (kIsWeb) {
+      html.window.onBeforeUnload.listen((event) async {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('clientNom');
+        await prefs.remove('clientPrenom');
+        await prefs.remove('clientHotelId');
+        await prefs.remove('clientHotelName');
+        await prefs.remove('conversationId');
+      });
+    }
+    // Gestion du paramètre conversationId dans l'URL (Flutter Web)
+    if (kIsWeb) {
+      final uri = Uri.base;
+      final conversationIdFromUrl = uri.pathSegments.length >= 2 && uri.pathSegments[0] == 'conversation'
+          ? uri.pathSegments[1]
+          : null;
+      if (conversationIdFromUrl != null && conversationIdFromUrl.isNotEmpty) {
+        setState(() {
+          _conversationId = conversationIdFromUrl;
+        });
+        // Ici, tu peux charger les messages de la conversation Firestore avec cet ID
+        // et désactiver le cadre de bienvenue
+        setState(() {
+          _showWelcomeMessage = false;
+        });
+      }
+    }
   }
 
   void _onHotelInputChanged() async {
@@ -107,17 +135,13 @@ class ChatScreenState extends State<ChatScreen> {
       _selectedHotelName = prefs.getString('clientHotelName');
     });
     
-    // Vérifier si les informations sont valides
     if (_clientNom == null || _clientNom!.isEmpty || 
         _clientPrenom == null || _clientPrenom!.isEmpty || 
         _selectedHotelId == null || _selectedHotelId!.isEmpty) {
-      // Réinitialiser les préférences si elles sont invalides
       await prefs.remove('clientNom');
       await prefs.remove('clientPrenom');
       await prefs.remove('clientHotelId');
       await prefs.remove('clientHotelName');
-      
-      // Afficher le dialogue de bienvenue
       WidgetsBinding.instance.addPostFrameCallback((_) => _showClientInfoDialog());
     }
   }
@@ -858,7 +882,7 @@ class ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_showWelcomeMessage && _messages.isEmpty) {
+    if (_showWelcomeMessage && _messages.isEmpty && _conversationId == null) {
       return Scaffold(
         appBar: AppBar(
           title: Text("Hotel Chatbot Assistant"),
@@ -937,4 +961,16 @@ class ChatMessage {
   final bool hasButtons; // Add this property to track if the message has buttons
 
   ChatMessage({required this.text, required this.isUser, this.isTemporary = false, this.hasButtons = false});
+}
+
+Future<void> libererReceptionniste(String hotelId, String receptionistId) async {
+  await FirebaseFirestore.instance
+      .collection('hotels')
+      .doc(hotelId)
+      .collection('receptionists')
+      .doc(receptionistId)
+      .update({
+        'isAvailable': true,
+        'currentConversationId': null,
+      });
 }

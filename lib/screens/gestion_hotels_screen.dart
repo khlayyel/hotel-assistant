@@ -238,6 +238,7 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> {
           }
         ],
         'createdAt': FieldValue.serverTimestamp(),
+        'isAvailable': true,
       });
       await _loadReceptionists();
       _receptionistNameController.clear();
