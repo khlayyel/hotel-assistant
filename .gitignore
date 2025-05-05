@@ -46,3 +46,6 @@ app.*.map.json
 
 service-account.json
 .vercel
+
+.env
+.env.example

@@ -514,7 +514,6 @@ class ChatScreenState extends State<ChatScreen> {
 
   void _handleEscalationResponse(String response) async {
     setState(() {
-      // On retire seulement les boutons, mais on laisse le message d'escalade affiché
       int idx = _messages.indexWhere((msg) => msg.hasButtons == true);
       if (idx != -1) {
         final oldMsg = _messages[idx];
@@ -532,7 +531,7 @@ class ChatScreenState extends State<ChatScreen> {
         final summaryPrompt = "Fais un résumé concis et clair de la conversation entre le client et le chatbot. Le résumé doit être dans la langue du client et aider le réceptionniste à comprendre rapidement le contexte et les besoins du client. Sois bref et précis.\n" +
           conversationContext.map((m) => (m["role"] == "user" ? "Client : " : "Assistant : ") + (m["content"] ?? "")).join("\n") +
           "\nAssistant :";
-        print('Prompt résumé envoyé à l\'IA : $summaryPrompt');
+        
         final summaryResponse = await http.post(
           Uri.parse(Environment.apiBaseUrl + '/predictions'),
           headers: {'Content-Type': 'application/json'},
@@ -542,67 +541,119 @@ class ChatScreenState extends State<ChatScreen> {
             }
           }),
         );
-        print('Réponse brute de l\'API résumé : ' + summaryResponse.body);
+        
         final summaryData = jsonDecode(summaryResponse.body);
-        print('Données décodées de l\'API résumé : ' + summaryData.toString());
         String summary = '';
         if (summaryData.containsKey('status') && summaryData['status'] == 'succeeded' && summaryData['output'] != null && summaryData['output'].isNotEmpty) {
           summary = summaryData['output'][0];
         } else {
-          print('Erreur : champ attendu manquant ou vide dans summaryData. summaryData = ' + summaryData.toString());
           summary = 'Erreur : aucun résumé généré.\nDétail technique : ' + summaryData.toString();
         }
-        print('Résumé généré : $summary');
-        // Envoi de la notification email à tous les réceptionnistes de l'hôtel choisi
-        try {
-          final receptionistsSnap = await FirebaseFirestore.instance
-              .collection('hotels')
-              .doc(_selectedHotelId)
-              .collection('receptionists')
-              .get();
-          List<String> allReceptionistEmails = [];
-          for (var doc in receptionistsSnap.docs) {
-            final emails = List<Map<String, dynamic>>.from(doc['emails'] ?? []);
-            for (var emailObj in emails) {
-              final emailReceptionniste = emailObj['address'];
-              if (emailReceptionniste != null && emailReceptionniste.toString().isNotEmpty) {
-                allReceptionistEmails.add(emailReceptionniste);
-              }
-            }
-          }
-          print('Emails envoyés à : $allReceptionistEmails');
-          if (allReceptionistEmails.isNotEmpty) {
-            final responseNotif = await http.post(
-              Uri.parse(Environment.apiBaseUrl + '/sendNotification'),
-              headers: {'Content-Type': 'application/json'},
-              body: jsonEncode({
-                'title': 'Client en attente',
-                'body': 'Un client est en attente de votre assistance !\n\nRésumé de la conversation :\n' + summary,
-                'conversationId': _conversationId,
-                'emails': allReceptionistEmails,
-              }),
-            );
-            print('Notifications envoyées vers : $allReceptionistEmails');
-            print('Réponse serveur notification : \'${responseNotif.body}\'');
-          }
-        } catch (e) {
-          print('Erreur lors de l\'envoi de la notification email groupée : $e');
-        }
-        await FirebaseFirestore.instance
-          .collection('conversations')
-          .doc(_conversationId)
-          .update({
-            'isEscalated': true,
-            'receptionnisteNom': 'Réceptionniste de ' + (_selectedHotelName ?? ''),
+
+        // Vérifier si un réceptionniste est déjà assigné
+        final conversationDoc = await FirebaseFirestore.instance
+            .collection('conversations')
+            .doc(_conversationId)
+            .get();
+
+        if (conversationDoc.exists && conversationDoc.data()?['assignedReceptionist'] != null) {
+          setState(() {
+            _messages.add(ChatMessage(
+              text: "Un réceptionniste est déjà en train de vous assister. Veuillez patienter...",
+              isUser: false
+            ));
           });
+          return;
+        }
+
+        // Récupérer tous les réceptionnistes disponibles
+        final receptionistsSnap = await FirebaseFirestore.instance
+            .collection('hotels')
+            .doc(_selectedHotelId)
+            .collection('receptionists')
+            .where('isAvailable', isEqualTo: true)
+            .get();
+
+        if (receptionistsSnap.docs.isEmpty) {
+          setState(() {
+            _messages.add(ChatMessage(
+              text: "Désolé, aucun réceptionniste n'est disponible pour le moment. Veuillez réessayer dans quelques minutes.",
+              isUser: false
+            ));
+          });
+          return;
+        }
+
+        // Sélectionner le premier réceptionniste disponible
+        final selectedReceptionist = receptionistsSnap.docs.first;
+        final receptionistEmail = selectedReceptionist['email'] as String;
+        final receptionistName = selectedReceptionist['name'] as String;
+
+        // Générer un lien unique pour cette conversation
+        final conversationLink = '${Environment.webAppUrl}/conversation/$_conversationId';
+
+        // Mettre à jour le statut du réceptionniste
+        await FirebaseFirestore.instance
+            .collection('hotels')
+            .doc(_selectedHotelId)
+            .collection('receptionists')
+            .doc(selectedReceptionist.id)
+            .update({
+              'isAvailable': false,
+              'currentConversationId': _conversationId
+            });
+
+        // Mettre à jour la conversation
+        await FirebaseFirestore.instance
+            .collection('conversations')
+            .doc(_conversationId)
+            .update({
+              'isEscalated': true,
+              'assignedReceptionist': {
+                'id': selectedReceptionist.id,
+                'name': receptionistName,
+                'email': receptionistEmail
+              },
+              'conversationLink': conversationLink
+            });
+
+        // Envoyer la notification au réceptionniste sélectionné
+        final responseNotif = await http.post(
+          Uri.parse(Environment.apiBaseUrl + '/sendNotification'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'title': 'Nouvelle conversation client',
+            'body': 'Un client a besoin de votre assistance !\n\nRésumé de la conversation :\n$summary',
+            'conversationId': _conversationId,
+            'emails': [receptionistEmail],
+            'conversationLink': conversationLink
+          }),
+        );
+
         setState(() {
-          _messages.add(ChatMessage(text: "Patientez un moment, un réceptionniste va rejoindre la conversation...", isUser: false));
-          _messages.add(ChatMessage(text: "Résumé dédié pour le réceptionniste :", isUser: false));
-          _messages.add(ChatMessage(text: summary, isUser: false));
+          _messages.add(ChatMessage(
+            text: "Un réceptionniste a été notifié et va rejoindre la conversation...",
+            isUser: false
+          ));
+          _messages.add(ChatMessage(
+            text: "Résumé pour le réceptionniste :",
+            isUser: false
+          ));
+          _messages.add(ChatMessage(
+            text: summary,
+            isUser: false
+          ));
         });
+
         _logChat();
       } catch (e) {
-        print('Erreur génération résumé ou notification : $e');
+        print('Erreur lors de l\'escalade : $e');
+        setState(() {
+          _messages.add(ChatMessage(
+            text: "Une erreur s'est produite lors de la mise en relation avec un réceptionniste. Veuillez réessayer.",
+            isUser: false
+          ));
+        });
       }
     } else {
       setState(() {
