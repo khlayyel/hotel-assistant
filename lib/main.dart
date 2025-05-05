@@ -89,15 +89,36 @@ class ChatScreenState extends State<ChatScreen> {
       final conversationIdFromUrl = uri.pathSegments.length >= 2 && uri.pathSegments[0] == 'conversation'
           ? uri.pathSegments[1]
           : null;
+      final receptionistEmail = uri.queryParameters['receptionistEmail']; // On suppose que le lien contient ?receptionistEmail=xxx
       if (conversationIdFromUrl != null && conversationIdFromUrl.isNotEmpty) {
         setState(() {
           _conversationId = conversationIdFromUrl;
-        });
-        // Ici, tu peux charger les messages de la conversation Firestore avec cet ID
-        // et désactiver le cadre de bienvenue
-        setState(() {
           _showWelcomeMessage = false;
         });
+        // Si un email de réceptionniste est fourni, on le passe indisponible
+        if (receptionistEmail != null && receptionistEmail.isNotEmpty && _selectedHotelId != null) {
+          // Chercher le doc du réceptionniste par email
+          FirebaseFirestore.instance
+            .collection('hotels')
+            .doc(_selectedHotelId)
+            .collection('receptionists')
+            .where('emails', arrayContainsAny: [{'address': receptionistEmail}])
+            .get()
+            .then((snap) {
+              if (snap.docs.isNotEmpty) {
+                final docId = snap.docs.first.id;
+                FirebaseFirestore.instance
+                  .collection('hotels')
+                  .doc(_selectedHotelId)
+                  .collection('receptionists')
+                  .doc(docId)
+                  .update({
+                    'isAvailable': false,
+                    'currentConversationId': conversationIdFromUrl,
+                  });
+              }
+            });
+        }
       }
     }
   }
@@ -633,31 +654,6 @@ class ChatScreenState extends State<ChatScreen> {
 
         // Générer un lien unique pour cette conversation
         final conversationLink = '${Environment.webAppUrl}/conversation/$_conversationId';
-
-        // Mettre à jour le statut du réceptionniste
-        await FirebaseFirestore.instance
-            .collection('hotels')
-            .doc(_selectedHotelId)
-            .collection('receptionists')
-            .doc(receptionistsSnap.docs.first.id)
-            .update({
-              'isAvailable': false,
-              'currentConversationId': _conversationId
-            });
-
-        // Mettre à jour la conversation
-        await FirebaseFirestore.instance
-            .collection('conversations')
-            .doc(_conversationId)
-            .update({
-              'isEscalated': true,
-              'assignedReceptionist': {
-                'id': receptionistsSnap.docs.first.id,
-                'name': receptionistsSnap.docs.first.data()!['name'],
-                'email': receptionistsSnap.docs.first.data()!['emails'][0]['address']
-              },
-              'conversationLink': conversationLink
-            });
 
         // Envoyer la notification à tous les emails
         final responseNotif = await http.post(
