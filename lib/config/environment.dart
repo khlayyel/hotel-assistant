@@ -1,6 +1,9 @@
 class Environment {
   // IMPORTANT : Remplace cette URL par l'URL publique de ton backend Node.js déployé (Render, Railway, etc.)
-  static const String apiBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: 'http://localhost:3000/api');
+  static const String apiBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'https://hotel-assistant.onrender.com/api'
+  );
   static const String webAppUrl = String.fromEnvironment('WEB_APP_URL', defaultValue: 'https://hotel-virtuel-assistant.vercel.app');
   static const int maxRetries = 30;
   static const Duration retryDelay = Duration(seconds: 1);
