@@ -67,6 +67,9 @@ class ChatScreenState extends State<ChatScreen> {
   final TextEditingController _hotelSearchController = TextEditingController();
   List<Map<String, dynamic>> _hotelSuggestions = [];
   bool _showHotelSuggestions = false;
+  bool _isReceptionist = false;
+  bool _isConversationEscalated = false;
+  String? _assignedReceptionistName;
 
   @override
   void initState() {
@@ -83,43 +86,56 @@ class ChatScreenState extends State<ChatScreen> {
         await prefs.remove('conversationId');
       });
     }
-    // Gestion du paramètre conversationId dans l'URL (Flutter Web)
+    // Gestion du paramètre conversationId et du rôle dans l'URL (Flutter Web)
     if (kIsWeb) {
       final uri = Uri.base;
       final conversationIdFromUrl = uri.pathSegments.length >= 2 && uri.pathSegments[0] == 'conversation'
           ? uri.pathSegments[1]
           : null;
-      final receptionistEmail = uri.queryParameters['receptionistEmail']; // On suppose que le lien contient ?receptionistEmail=xxx
+      final role = uri.queryParameters['role'];
+      if (role == 'receptionist') {
+        _isReceptionist = true;
+      }
       if (conversationIdFromUrl != null && conversationIdFromUrl.isNotEmpty) {
         setState(() {
           _conversationId = conversationIdFromUrl;
           _showWelcomeMessage = false;
         });
-        // Si un email de réceptionniste est fourni, on le passe indisponible
-        if (receptionistEmail != null && receptionistEmail.isNotEmpty && _selectedHotelId != null) {
-          // Chercher le doc du réceptionniste par email
-          FirebaseFirestore.instance
-            .collection('hotels')
-            .doc(_selectedHotelId)
-            .collection('receptionists')
-            .where('emails', arrayContainsAny: [{'address': receptionistEmail}])
-            .get()
-            .then((snap) {
-              if (snap.docs.isNotEmpty) {
-                final docId = snap.docs.first.id;
-                FirebaseFirestore.instance
-                  .collection('hotels')
-                  .doc(_selectedHotelId)
-                  .collection('receptionists')
-                  .doc(docId)
-                  .update({
-                    'isAvailable': false,
-                    'currentConversationId': conversationIdFromUrl,
-                  });
-              }
-            });
-        }
+        _loadConversationMessages(conversationIdFromUrl);
+        _checkEscalationStatus(conversationIdFromUrl);
       }
+    }
+  }
+
+  Future<void> _loadConversationMessages(String conversationId) async {
+    final messagesSnap = await FirebaseFirestore.instance
+        .collection('conversations')
+        .doc(conversationId)
+        .collection('messages')
+        .orderBy('timestamp')
+        .get();
+    setState(() {
+      _messages.clear();
+      for (var doc in messagesSnap.docs) {
+        _messages.add(ChatMessage(
+          text: doc['text'],
+          isUser: doc['isUser'],
+        ));
+      }
+    });
+  }
+
+  Future<void> _checkEscalationStatus(String conversationId) async {
+    final doc = await FirebaseFirestore.instance
+        .collection('conversations')
+        .doc(conversationId)
+        .get();
+    if (doc.exists) {
+      final data = doc.data()!;
+      setState(() {
+        _isConversationEscalated = data['isEscalated'] == true;
+        _assignedReceptionistName = data['assignedReceptionist']?['name'];
+      });
     }
   }
 
@@ -415,10 +431,52 @@ class ChatScreenState extends State<ChatScreen> {
       await _createConversation();
     }
     if (_controller.text.isEmpty) return;
-
     String userMessage = _controller.text.trim();
     _controller.clear();
     print('Message utilisateur : $userMessage');
+
+    // Bloquer le bot si un réceptionniste est en charge
+    if (_isConversationEscalated && _assignedReceptionistName != null && !_isReceptionist) {
+      setState(() {
+        _messages.add(ChatMessage(
+          text: "Un réceptionniste est en charge de cette conversation. Veuillez attendre sa réponse.",
+          isUser: false,
+        ));
+      });
+      return;
+    }
+
+    setState(() {
+      _messages.add(ChatMessage(text: userMessage, isUser: true));
+      _isTyping = true;
+      _messages.add(ChatMessage(text: "Bot is typing...", isUser: false, isTemporary: true));
+    });
+    _logChat();
+
+    // Sauvegarder le message dans Firestore
+    try {
+      await FirebaseFirestore.instance
+          .collection('conversations')
+          .doc(_conversationId)
+          .collection('messages')
+          .add({
+        'text': userMessage,
+        'isUser': true,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print('❌ Erreur sauvegarde message: $e');
+    }
+
+    // Si c'est le réceptionniste, il répond directement
+    if (_isReceptionist) {
+      setState(() {
+        _messages.removeWhere((msg) => msg.isTemporary);
+        _messages.add(ChatMessage(text: userMessage, isUser: true));
+      });
+      _logChat();
+      return;
+    }
 
     // Détection de la langue du message utilisateur
     String userLang = detectLanguage(userMessage);
@@ -451,28 +509,6 @@ class ChatScreenState extends State<ChatScreen> {
       setState(() {
         _showWelcomeMessage = false;
       });
-    }
-
-    setState(() {
-      _messages.add(ChatMessage(text: userMessage, isUser: true));
-      _isTyping = true;
-      _messages.add(ChatMessage(text: "Bot is typing...", isUser: false, isTemporary: true));
-    });
-    _logChat();
-
-    // Sauvegarder le message de l'utilisateur dans Firestore
-    try {
-      await FirebaseFirestore.instance
-          .collection('conversations')
-          .doc(_conversationId)
-          .collection('messages')
-          .add({
-        'text': userMessage,
-        'isUser': true,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-    } catch (e) {
-      print('❌ Erreur sauvegarde message: $e');
     }
 
     // LOGIQUE STRICTE : jamais de réponse IA sur un sujet métier, toujours escalade
@@ -894,77 +930,69 @@ class ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (_showWelcomeMessage && _messages.isEmpty && _conversationId == null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text("Hotel Chatbot Assistant"),
-          actions: [
-            IconButton(
-              icon: Icon(Icons.settings),
-              onPressed: _resetClientInfo,
-              tooltip: 'Réinitialiser les informations client',
-            ),
-          ],
+  Widget _buildEscalationBadge() {
+    if (_isConversationEscalated && _assignedReceptionistName != null) {
+      return Container(
+        margin: EdgeInsets.only(bottom: 8),
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.orange[700],
+          borderRadius: BorderRadius.circular(8),
         ),
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                "Bonjour ! Je suis l'assistant virtuel de l'hôtel. Je peux répondre à vos questions générales sur l'établissement. Pour toute question sur les prix, chambres, services ou réservations, je vous proposerai d'être mis en relation avec un réceptionniste humain.",
-                style: TextStyle(color: Colors.grey[400], fontSize: 18, fontWeight: FontWeight.w500),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 20),
-              _buildInputArea(),
-              if (_showGestionButton)
-                ElevatedButton(
-                  onPressed: _navigateToGestionHotels,
-                  child: Text("Gestion Hotels et Receptionnistes"),
-                ),
-              SizedBox(height: 20),
-            ],
-          ),
-        ),
-      );
-    } else {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text("Hotel Chatbot Assistant"),
-          actions: [
-            IconButton(
-              icon: Icon(Icons.settings),
-              onPressed: _resetClientInfo,
-              tooltip: 'Réinitialiser les informations client',
-            ),
-          ],
-        ),
-        body: Column(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: ListView.builder(
-                controller: _scrollController,
-                reverse: false,
-                itemCount: _messages.length,
-                itemBuilder: (context, index) => _buildMessage(_messages[index], index),
-              ),
+            Icon(Icons.person, color: Colors.white, size: 18),
+            SizedBox(width: 8),
+            Text(
+              'Réceptionniste en charge : $_assignedReceptionistName',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
             ),
-            _buildInputArea(),
-            if (_showGestionButton)
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: ElevatedButton(
-                  onPressed: _navigateToGestionHotels,
-                  child: Text("Gestion Hotels et Receptionnistes"),
-                ),
-              ),
-            SizedBox(height: 20),
           ],
         ),
       );
     }
+    return SizedBox.shrink();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Hotel Chatbot Assistant"),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.settings),
+            onPressed: _resetClientInfo,
+            tooltip: 'Réinitialiser les informations client',
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          if (_isConversationEscalated && _assignedReceptionistName != null)
+            _buildEscalationBadge(),
+          Expanded(
+            child: ListView.builder(
+              controller: _scrollController,
+              reverse: false,
+              itemCount: _messages.length,
+              itemBuilder: (context, index) => _buildMessage(_messages[index], index),
+            ),
+          ),
+          _buildInputArea(),
+          if (_showGestionButton)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: ElevatedButton(
+                onPressed: _navigateToGestionHotels,
+                child: Text("Gestion Hotels et Receptionnistes"),
+              ),
+            ),
+          SizedBox(height: 20),
+        ],
+      ),
+    );
   }
 }
 
