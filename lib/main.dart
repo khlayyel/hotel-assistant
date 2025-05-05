@@ -608,10 +608,28 @@ class ChatScreenState extends State<ChatScreen> {
           return;
         }
 
-        // Sélectionner le premier réceptionniste disponible
-        final selectedReceptionist = receptionistsSnap.docs.first;
-        final receptionistEmail = selectedReceptionist['email'] as String;
-        final receptionistName = selectedReceptionist['name'] as String;
+        // Récupérer tous les emails de tous les réceptionnistes disponibles
+        final allEmails = <String>[];
+        for (var doc in receptionistsSnap.docs) {
+          final emailsList = doc['emails'] as List<dynamic>;
+          for (var emailObj in emailsList) {
+            final email = emailObj['address'] as String?;
+            if (email != null && email.isNotEmpty) {
+              allEmails.add(email);
+            }
+          }
+        }
+
+        // Vérifier qu'il y a au moins un email
+        if (allEmails.isEmpty) {
+          setState(() {
+            _messages.add(ChatMessage(
+              text: "Erreur : aucun email valide trouvé pour les réceptionnistes.",
+              isUser: false
+            ));
+          });
+          return;
+        }
 
         // Générer un lien unique pour cette conversation
         final conversationLink = '${Environment.webAppUrl}/conversation/$_conversationId';
@@ -621,7 +639,7 @@ class ChatScreenState extends State<ChatScreen> {
             .collection('hotels')
             .doc(_selectedHotelId)
             .collection('receptionists')
-            .doc(selectedReceptionist.id)
+            .doc(receptionistsSnap.docs.first.id)
             .update({
               'isAvailable': false,
               'currentConversationId': _conversationId
@@ -634,14 +652,14 @@ class ChatScreenState extends State<ChatScreen> {
             .update({
               'isEscalated': true,
               'assignedReceptionist': {
-                'id': selectedReceptionist.id,
-                'name': receptionistName,
-                'email': receptionistEmail
+                'id': receptionistsSnap.docs.first.id,
+                'name': receptionistsSnap.docs.first.data()!['name'],
+                'email': receptionistsSnap.docs.first.data()!['emails'][0]['address']
               },
               'conversationLink': conversationLink
             });
 
-        // Envoyer la notification au réceptionniste sélectionné
+        // Envoyer la notification à tous les emails
         final responseNotif = await http.post(
           Uri.parse(Environment.apiBaseUrl + '/sendNotification'),
           headers: {'Content-Type': 'application/json'},
@@ -649,7 +667,7 @@ class ChatScreenState extends State<ChatScreen> {
             'title': 'Nouvelle conversation client',
             'body': 'Un client a besoin de votre assistance !\n\nRésumé de la conversation :\n$summary',
             'conversationId': _conversationId,
-            'emails': [receptionistEmail],
+            'emails': allEmails,
             'conversationLink': conversationLink
           }),
         );
