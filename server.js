@@ -7,7 +7,13 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors({
-  origin: 'https://assistant-gxtt132oq-khalils-projects-014efdbb.vercel.app',
+  origin: function(origin, callback) {
+    if (!origin) return callback(null, true);
+    if (/vercel\.app$/.test(origin)) {
+      return callback(null, true);
+    }
+    callback(new Error('Not allowed by CORS'));
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
