@@ -63,7 +63,7 @@ app.post('/api/predictions', async (req, res) => {
 
 // Endpoint pour envoyer un email de notification
 app.post('/api/sendNotification', async (req, res) => {
-  const { title, body, emails } = req.body;
+  const { title, body, emails, conversationLink } = req.body;
   try {
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
       console.error('❌ EMAIL_USER ou EMAIL_PASS manquant dans les variables d\'environnement.');
@@ -81,7 +81,11 @@ app.post('/api/sendNotification', async (req, res) => {
         from: process.env.EMAIL_USER,
         to: email,
         subject: title,
-        text: body
+        text: body,
+        html: `<div style="font-family:Arial,sans-serif;font-size:16px;">
+          <p>${body.replace(/\n/g, '<br>')}</p>
+          <a href="${conversationLink}" style="display:inline-block;padding:12px 24px;background:#1976d2;color:#fff;text-decoration:none;border-radius:6px;margin-top:16px;font-weight:bold;">Accéder à la conversation</a>
+        </div>`
       });
     }
     res.json({ success: true, sent: emails.length });

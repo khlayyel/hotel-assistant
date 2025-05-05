@@ -665,7 +665,7 @@ class ChatScreenState extends State<ChatScreen> {
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
             'title': 'Nouvelle conversation client',
-            'body': 'Un client a besoin de votre assistance !\n\nRésumé de la conversation :\n$summary',
+            'body': 'Un client a besoin de votre assistance !\n\nRésumé de la conversation :\n$summary\n\nAccéder à la conversation : $conversationLink',
             'conversationId': _conversationId,
             'emails': allEmails,
             'conversationLink': conversationLink
