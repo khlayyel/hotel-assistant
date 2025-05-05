@@ -1,5 +1,8 @@
 {
   "version": 2,
   "framework": "static",
-  "outputDirectory": "build/web"
+  "outputDirectory": "build/web",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 } 
