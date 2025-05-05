@@ -4,7 +4,10 @@ class Environment {
     'API_BASE_URL',
     defaultValue: 'https://hotel-assistant.onrender.com/api'
   );
-  static const String webAppUrl = String.fromEnvironment('WEB_APP_URL', defaultValue: 'https://hotel-virtuel-assistant.vercel.app');
+  static const String webAppUrl = String.fromEnvironment(
+    'WEB_APP_URL',
+    defaultValue: 'https://assistant-seven-pi.vercel.app'
+  );
   static const int maxRetries = 30;
   static const Duration retryDelay = Duration(seconds: 1);
   static const Duration timeout = Duration(seconds: 30);
