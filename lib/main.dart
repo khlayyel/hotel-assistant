@@ -409,6 +409,7 @@ class ChatScreenState extends State<ChatScreen> {
     setState(() {
       _conversationId = docRef.id;
     });
+    _listenToMessages(_conversationId!);
     print('Conversation créée avec ID: $_conversationId');
   }
 
@@ -1054,7 +1055,15 @@ class ChatScreenState extends State<ChatScreen> {
               child: StreamBuilder<QuerySnapshot>(
                 stream: _messagesStream,
                 builder: (context, snapshot) {
-                  if (!snapshot.hasData) return Center(child: CircularProgressIndicator());
+                  if (_messagesStream == null) {
+                    return Center(child: Text("Aucune conversation en cours."));
+                  }
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  }
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return Center(child: Text("Aucun message pour l'instant."));
+                  }
                   final docs = snapshot.data!.docs;
                   return ListView.builder(
                     controller: _scrollController,
@@ -1133,7 +1142,15 @@ class ChatScreenState extends State<ChatScreen> {
               child: StreamBuilder<QuerySnapshot>(
                 stream: _messagesStream,
                 builder: (context, snapshot) {
-                  if (!snapshot.hasData) return Center(child: CircularProgressIndicator());
+                  if (_messagesStream == null) {
+                    return Center(child: Text("Aucune conversation en cours."));
+                  }
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  }
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return Center(child: Text("Aucun message pour l'instant."));
+                  }
                   final docs = snapshot.data!.docs;
                   return ListView.builder(
                     controller: _scrollController,
