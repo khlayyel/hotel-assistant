@@ -1231,24 +1231,3 @@ Future<void> libererReceptionniste(String hotelId, String receptionistId) async 
         'currentConversationId': null,
       });
 }
-
-Future<String?> _askReceptionistNameDialog() async {
-  final controller = TextEditingController();
-  return await showDialog<String>(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) => AlertDialog(
-      title: Text('Entrez votre nom'),
-      content: TextField(
-        controller: controller,
-        decoration: InputDecoration(labelText: 'Nom du réceptionniste'),
-      ),
-      actions: [
-        ElevatedButton(
-          onPressed: () => Navigator.pop(context, controller.text.trim()),
-          child: Text('Valider'),
-        ),
-      ],
-    ),
-  );
-}
