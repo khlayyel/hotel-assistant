@@ -70,6 +70,7 @@ class ChatScreenState extends State<ChatScreen> {
   bool _isReceptionist = false;
   bool _isConversationEscalated = false;
   String? _assignedReceptionistName;
+  String? _receptionistName;
 
   @override
   void initState() {
@@ -93,8 +94,10 @@ class ChatScreenState extends State<ChatScreen> {
           ? uri.pathSegments[1]
           : null;
       final role = uri.queryParameters['role'];
+      final receptionistName = uri.queryParameters['receptionistName'];
       if (role == 'receptionist') {
         _isReceptionist = true;
+        _receptionistName = receptionistName;
       }
       if (conversationIdFromUrl != null && conversationIdFromUrl.isNotEmpty) {
         setState(() {
@@ -103,6 +106,10 @@ class ChatScreenState extends State<ChatScreen> {
         });
         _loadConversationMessages(conversationIdFromUrl);
         _checkEscalationStatus(conversationIdFromUrl);
+        // Assigner le réceptionniste si ce n'est pas déjà fait
+        if (_isReceptionist && _receptionistName != null) {
+          _assignReceptionistToConversation(conversationIdFromUrl, _receptionistName!);
+        }
       }
     }
   }
@@ -120,6 +127,7 @@ class ChatScreenState extends State<ChatScreen> {
         _messages.add(ChatMessage(
           text: doc['text'],
           isUser: doc['isUser'],
+          senderName: doc.data().containsKey('senderName') ? doc['senderName'] : null,
         ));
       }
     });
@@ -135,6 +143,20 @@ class ChatScreenState extends State<ChatScreen> {
       setState(() {
         _isConversationEscalated = data['isEscalated'] == true;
         _assignedReceptionistName = data['assignedReceptionist']?['name'];
+      });
+    }
+  }
+
+  Future<void> _assignReceptionistToConversation(String conversationId, String receptionistName) async {
+    final doc = await FirebaseFirestore.instance.collection('conversations').doc(conversationId).get();
+    if (doc.exists && (doc.data()?['assignedReceptionist'] == null)) {
+      await FirebaseFirestore.instance.collection('conversations').doc(conversationId).update({
+        'isEscalated': true,
+        'assignedReceptionist': {'name': receptionistName},
+      });
+      setState(() {
+        _isConversationEscalated = true;
+        _assignedReceptionistName = receptionistName;
       });
     }
   }
@@ -426,7 +448,6 @@ class ChatScreenState extends State<ChatScreen> {
   }
 
   void _sendMessage() async {
-    // Créer la conversation si nécessaire
     if (_conversationId == null) {
       await _createConversation();
     }
@@ -446,14 +467,7 @@ class ChatScreenState extends State<ChatScreen> {
       return;
     }
 
-    setState(() {
-      _messages.add(ChatMessage(text: userMessage, isUser: true));
-      _isTyping = true;
-      _messages.add(ChatMessage(text: "Bot is typing...", isUser: false, isTemporary: true));
-    });
-    _logChat();
-
-    // Sauvegarder le message dans Firestore
+    // Ajout du message dans Firestore avec le nom de l'expéditeur
     try {
       await FirebaseFirestore.instance
           .collection('conversations')
@@ -461,20 +475,26 @@ class ChatScreenState extends State<ChatScreen> {
           .collection('messages')
           .add({
         'text': userMessage,
-        'isUser': true,
+        'isUser': _isReceptionist ? false : true,
         'timestamp': FieldValue.serverTimestamp(),
+        'senderName': _isReceptionist ? _receptionistName : null,
       });
     } catch (e) {
       print('❌ Erreur sauvegarde message: $e');
     }
 
-    // Si c'est le réceptionniste, il répond directement
+    setState(() {
+      _messages.add(ChatMessage(text: userMessage, isUser: _isReceptionist ? false : true, senderName: _isReceptionist ? _receptionistName : null));
+      _isTyping = !_isReceptionist;
+      if (!_isReceptionist) {
+        _messages.add(ChatMessage(text: "Bot is typing...", isUser: false, isTemporary: true));
+      }
+    });
+    _logChat();
+
+    // Si c'est le réceptionniste, il répond directement (pas de bot)
     if (_isReceptionist) {
-      setState(() {
-        _messages.removeWhere((msg) => msg.isTemporary);
-        _messages.add(ChatMessage(text: userMessage, isUser: true));
-      });
-      _logChat();
+      _scrollToBottom();
       return;
     }
 
@@ -813,7 +833,8 @@ class ChatScreenState extends State<ChatScreen> {
   Widget _buildMessage(ChatMessage message, int index) {
     bool isUser = message.isUser;
     bool isTemporary = message.isTemporary;
-
+    String sender = message.senderName ?? (isUser ? "Client" : "Bot");
+    if (_isReceptionist && !isUser && message.senderName != null) sender = message.senderName!;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
       child: Row(
@@ -860,7 +881,14 @@ class ChatScreenState extends State<ChatScreen> {
                         _buildEscalationButtons(),
                       ],
                     )
-                  : Text(message.text, style: TextStyle(color: Colors.white, fontSize: 16)),
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(sender, style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 13)),
+                        SizedBox(height: 2),
+                        Text(message.text, style: TextStyle(color: Colors.white, fontSize: 16)),
+                      ],
+                    ),
             ),
           ),
           if (isUser) SizedBox(width: 10),
@@ -1000,9 +1028,10 @@ class ChatMessage {
   final String text;
   final bool isUser;
   final bool isTemporary;
-  final bool hasButtons; // Add this property to track if the message has buttons
+  final bool hasButtons;
+  final String? senderName;
 
-  ChatMessage({required this.text, required this.isUser, this.isTemporary = false, this.hasButtons = false});
+  ChatMessage({required this.text, required this.isUser, this.isTemporary = false, this.hasButtons = false, this.senderName});
 }
 
 Future<void> libererReceptionniste(String hotelId, String receptionistId) async {
