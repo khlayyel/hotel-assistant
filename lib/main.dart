@@ -1181,6 +1181,33 @@ class ChatScreenState extends State<ChatScreen> {
       FirebaseFirestore.instance.collection('conversations').doc(_conversationId).update({'assignedReceptionist': null, 'isEscalated': false});
     }
   }
+
+  void _listenToMessages(String conversationId) {
+    _messagesStream = FirebaseFirestore.instance
+        .collection('conversations')
+        .doc(conversationId)
+        .collection('messages')
+        .orderBy('timestamp')
+        .snapshots();
+    print('Écoute des messages en temps réel pour la conversation $conversationId');
+  }
+
+  Future<void> _showErrorDialog(String message) async {
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Text('Erreur'),
+        content: Text(message),
+        actions: [
+          ElevatedButton(
+            onPressed: () => html.window.location.href = Environment.webAppUrl,
+            child: Text('Retour'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class ChatMessage {
@@ -1220,32 +1247,6 @@ Future<String?> _askReceptionistNameDialog() async {
         ElevatedButton(
           onPressed: () => Navigator.pop(context, controller.text.trim()),
           child: Text('Valider'),
-        ),
-      ],
-    ),
-  );
-}
-
-void _listenToMessages(String conversationId) {
-  _messagesStream = FirebaseFirestore.instance
-      .collection('conversations')
-      .doc(conversationId)
-      .collection('messages')
-      .orderBy('timestamp')
-      .snapshots();
-}
-
-Future<void> _showErrorDialog(String message) async {
-  await showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) => AlertDialog(
-      title: Text('Erreur'),
-      content: Text(message),
-      actions: [
-        ElevatedButton(
-          onPressed: () => html.window.location.href = Environment.webAppUrl,
-          child: Text('Retour'),
         ),
       ],
     ),
