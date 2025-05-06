@@ -71,6 +71,8 @@ class ChatScreenState extends State<ChatScreen> {
   bool _isConversationEscalated = false;
   String? _assignedReceptionistName;
   String? _receptionistName;
+  Stream<QuerySnapshot>? _messagesStream;
+  String? _resumeConversation;
 
   @override
   void initState() {
@@ -94,20 +96,40 @@ class ChatScreenState extends State<ChatScreen> {
           ? uri.pathSegments[1]
           : null;
       final role = uri.queryParameters['role'];
-      final receptionistName = uri.queryParameters['receptionistName'];
+      String? receptionistName = uri.queryParameters['receptionistName'];
       if (role == 'receptionist') {
         _isReceptionist = true;
-        _receptionistName = receptionistName;
+        if (receptionistName == null || receptionistName == 'null' || receptionistName.isEmpty) {
+          // Afficher une erreur et ne pas permettre d'accéder à la conversation
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => AlertDialog(
+                title: Text('Erreur'),
+                content: Text('Le nom du réceptionniste doit être fourni dans l\'URL (receptionistName).'),
+                actions: [
+                  ElevatedButton(
+                    onPressed: () => html.window.location.href = Environment.webAppUrl,
+                    child: Text('Retour'),
+                  ),
+                ],
+              ),
+            );
+          });
+          return;
+        } else {
+          _receptionistName = receptionistName;
+        }
       }
       if (conversationIdFromUrl != null && conversationIdFromUrl.isNotEmpty) {
         setState(() {
           _conversationId = conversationIdFromUrl;
           _showWelcomeMessage = false;
         });
-        _loadConversationMessages(conversationIdFromUrl);
+        _listenToMessages(conversationIdFromUrl);
         _checkEscalationStatus(conversationIdFromUrl);
-        // Assigner le réceptionniste si ce n'est pas déjà fait
-        if (_isReceptionist && _receptionistName != null) {
+        if (_isReceptionist && _receptionistName != null && _receptionistName != 'null') {
           _assignReceptionistToConversation(conversationIdFromUrl, _receptionistName!);
         }
       }
@@ -154,9 +176,34 @@ class ChatScreenState extends State<ChatScreen> {
         'isEscalated': true,
         'assignedReceptionist': {'name': receptionistName},
       });
+      // Mettre à jour isAvailable à false pour ce réceptionniste
+      if (_selectedHotelId != null) {
+        final receptionists = await FirebaseFirestore.instance.collection('hotels').doc(_selectedHotelId).collection('receptionists').where('name', isEqualTo: receptionistName).get();
+        if (receptionists.docs.isNotEmpty) {
+          await receptionists.docs.first.reference.update({'isAvailable': false, 'currentConversationId': conversationId});
+        }
+      }
       setState(() {
         _isConversationEscalated = true;
         _assignedReceptionistName = receptionistName;
+      });
+    } else if (doc.exists && doc.data()?['assignedReceptionist'] != null && doc.data()?['assignedReceptionist']['name'] != receptionistName) {
+      // Un autre réceptionniste est déjà en charge
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: Text('Conversation déjà prise en charge'),
+            content: Text('Cette conversation est déjà prise en charge par ${doc.data()?['assignedReceptionist']['name']}.'),
+            actions: [
+              ElevatedButton(
+                onPressed: () => html.window.location.href = Environment.webAppUrl,
+                child: Text('Retour'),
+              ),
+            ],
+          ),
+        );
       });
     }
   }
@@ -469,22 +516,25 @@ class ChatScreenState extends State<ChatScreen> {
 
     // Ajout du message dans Firestore avec le nom de l'expéditeur
     try {
+      String senderName = _isReceptionist
+        ? (_receptionistName ?? 'Réceptionniste')
+        : ((_clientPrenom != null && _clientNom != null) ? '$_clientPrenom $_clientNom' : 'Client');
       await FirebaseFirestore.instance
           .collection('conversations')
           .doc(_conversationId)
           .collection('messages')
           .add({
         'text': userMessage,
-        'isUser': _isReceptionist ? false : true,
+        'isUser': !_isReceptionist,
         'timestamp': FieldValue.serverTimestamp(),
-        'senderName': _isReceptionist ? _receptionistName : null,
+        'senderName': senderName,
       });
     } catch (e) {
       print('❌ Erreur sauvegarde message: $e');
     }
 
     setState(() {
-      _messages.add(ChatMessage(text: userMessage, isUser: _isReceptionist ? false : true, senderName: _isReceptionist ? _receptionistName : null));
+      _messages.add(ChatMessage(text: userMessage, isUser: !_isReceptionist, senderName: senderName));
       _isTyping = !_isReceptionist;
       if (!_isReceptionist) {
         _messages.add(ChatMessage(text: "Bot is typing...", isUser: false, isTemporary: true));
@@ -689,10 +739,22 @@ class ChatScreenState extends State<ChatScreen> {
         final allEmails = <String>[];
         for (var doc in receptionistsSnap.docs) {
           final emailsList = doc['emails'] as List<dynamic>;
+          final receptionistName = doc['name'] as String?;
           for (var emailObj in emailsList) {
             final email = emailObj['address'] as String?;
-            if (email != null && email.isNotEmpty) {
-              allEmails.add(email);
+            if (email != null && email.isNotEmpty && receptionistName != null && receptionistName.isNotEmpty) {
+              final conversationLink = '${Environment.webAppUrl}/conversation/$_conversationId?role=receptionist&receptionistName=${Uri.encodeComponent(receptionistName)}';
+              await http.post(
+                Uri.parse(Environment.apiBaseUrl + '/sendNotification'),
+                headers: {'Content-Type': 'application/json'},
+                body: jsonEncode({
+                  'title': 'Nouvelle conversation client',
+                  'body': 'Un client a besoin de votre assistance !\n\nRésumé de la conversation :\n$summary\n\nAccéder à la conversation : $conversationLink',
+                  'conversationId': _conversationId,
+                  'emails': [email],
+                  'conversationLink': conversationLink
+                }),
+              );
             }
           }
         }
@@ -1003,11 +1065,26 @@ class ChatScreenState extends State<ChatScreen> {
             if (_isConversationEscalated && _assignedReceptionistName != null)
               _buildEscalationBadge(),
             Expanded(
-              child: ListView.builder(
-                controller: _scrollController,
-                reverse: false,
-                itemCount: _messages.length,
-                itemBuilder: (context, index) => _buildMessage(_messages[index], index),
+              child: StreamBuilder<QuerySnapshot>(
+                stream: _messagesStream,
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return Center(child: CircularProgressIndicator());
+                  final docs = snapshot.data!.docs;
+                  return ListView.builder(
+                    controller: _scrollController,
+                    reverse: false,
+                    itemCount: docs.length,
+                    itemBuilder: (context, index) {
+                      final doc = docs[index];
+                      final data = doc.data() as Map<String, dynamic>;
+                      return _buildMessage(ChatMessage(
+                        text: data['text'],
+                        isUser: data['isUser'],
+                        senderName: data['senderName'],
+                      ), index);
+                    },
+                  );
+                },
               ),
             ),
             _buildInputArea(),
@@ -1067,11 +1144,26 @@ class ChatScreenState extends State<ChatScreen> {
             if (_isConversationEscalated && _assignedReceptionistName != null)
               _buildEscalationBadge(),
             Expanded(
-              child: ListView.builder(
-                controller: _scrollController,
-                reverse: false,
-                itemCount: _messages.length,
-                itemBuilder: (context, index) => _buildMessage(_messages[index], index),
+              child: StreamBuilder<QuerySnapshot>(
+                stream: _messagesStream,
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return Center(child: CircularProgressIndicator());
+                  final docs = snapshot.data!.docs;
+                  return ListView.builder(
+                    controller: _scrollController,
+                    reverse: false,
+                    itemCount: docs.length,
+                    itemBuilder: (context, index) {
+                      final doc = docs[index];
+                      final data = doc.data() as Map<String, dynamic>;
+                      return _buildMessage(ChatMessage(
+                        text: data['text'],
+                        isUser: data['isUser'],
+                        senderName: data['senderName'],
+                      ), index);
+                    },
+                  );
+                },
               ),
             ),
             _buildInputArea(),
@@ -1087,6 +1179,20 @@ class ChatScreenState extends State<ChatScreen> {
           ],
         ),
       );
+    }
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    if (_isReceptionist && _receptionistName != null && _selectedHotelId != null && _conversationId != null) {
+      FirebaseFirestore.instance.collection('hotels').doc(_selectedHotelId).collection('receptionists').where('name', isEqualTo: _receptionistName).get().then((snap) {
+        if (snap.docs.isNotEmpty) {
+          snap.docs.first.reference.update({'isAvailable': true, 'currentConversationId': null});
+        }
+      });
+      // Libérer la conversation côté Firestore si besoin (optionnel)
+      FirebaseFirestore.instance.collection('conversations').doc(_conversationId).update({'assignedReceptionist': null, 'isEscalated': false});
     }
   }
 }
@@ -1111,4 +1217,36 @@ Future<void> libererReceptionniste(String hotelId, String receptionistId) async 
         'isAvailable': true,
         'currentConversationId': null,
       });
+}
+
+Future<String?> _askReceptionistNameDialog() async {
+  final controller = TextEditingController();
+  return await showDialog<String>(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => AlertDialog(
+      title: Text('Entrez votre nom'),
+      content: TextField(
+        controller: controller,
+        decoration: InputDecoration(labelText: 'Nom du réceptionniste'),
+      ),
+      actions: [
+        ElevatedButton(
+          onPressed: () => Navigator.pop(context, controller.text.trim()),
+          child: Text('Valider'),
+        ),
+      ],
+    ),
+  );
+}
+
+void _listenToMessages(String conversationId) {
+  setState(() {
+    _messagesStream = FirebaseFirestore.instance
+        .collection('conversations')
+        .doc(conversationId)
+        .collection('messages')
+        .orderBy('timestamp')
+        .snapshots();
+  });
 }
