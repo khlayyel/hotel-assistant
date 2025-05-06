@@ -709,7 +709,7 @@ class ChatScreenState extends State<ChatScreen> {
         }
 
         // Générer un lien unique pour cette conversation
-        final conversationLink = '${Environment.webAppUrl}/conversation/$_conversationId';
+        final conversationLink = '${Environment.webAppUrl}/conversation/$_conversationId?role=receptionist&receptionistName=$_receptionistName';
 
         // Envoyer la notification à tous les emails
         final responseNotif = await http.post(
@@ -985,42 +985,109 @@ class ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Hotel Chatbot Assistant"),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.settings),
-            onPressed: _resetClientInfo,
-            tooltip: 'Réinitialiser les informations client',
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          if (_isConversationEscalated && _assignedReceptionistName != null)
-            _buildEscalationBadge(),
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              reverse: false,
-              itemCount: _messages.length,
-              itemBuilder: (context, index) => _buildMessage(_messages[index], index),
+    // Si mode réceptionniste, pas de welcome, juste la conversation
+    if (_isReceptionist && _conversationId != null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text("Hotel Chatbot Assistant (Réceptionniste)"),
+          actions: [
+            IconButton(
+              icon: Icon(Icons.settings),
+              onPressed: _resetClientInfo,
+              tooltip: 'Réinitialiser les informations client',
             ),
-          ),
-          _buildInputArea(),
-          if (_showGestionButton)
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: ElevatedButton(
-                onPressed: _navigateToGestionHotels,
-                child: Text("Gestion Hotels et Receptionnistes"),
+          ],
+        ),
+        body: Column(
+          children: [
+            if (_isConversationEscalated && _assignedReceptionistName != null)
+              _buildEscalationBadge(),
+            Expanded(
+              child: ListView.builder(
+                controller: _scrollController,
+                reverse: false,
+                itemCount: _messages.length,
+                itemBuilder: (context, index) => _buildMessage(_messages[index], index),
               ),
             ),
-          SizedBox(height: 20),
-        ],
-      ),
-    );
+            _buildInputArea(),
+            SizedBox(height: 20),
+          ],
+        ),
+      );
+    }
+    // Sinon, comportement normal (client)
+    if (_showWelcomeMessage && _messages.isEmpty && _conversationId == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text("Hotel Chatbot Assistant"),
+          actions: [
+            IconButton(
+              icon: Icon(Icons.settings),
+              onPressed: _resetClientInfo,
+              tooltip: 'Réinitialiser les informations client',
+            ),
+          ],
+        ),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "Bonjour ! Je suis l'assistant virtuel de l'hôtel. Je peux répondre à vos questions générales sur l'établissement. Pour toute question sur les prix, chambres, services ou réservations, je vous proposerai d'être mis en relation avec un réceptionniste humain.",
+                style: TextStyle(color: Colors.grey[400], fontSize: 18, fontWeight: FontWeight.w500),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 20),
+              _buildInputArea(),
+              if (_showGestionButton)
+                ElevatedButton(
+                  onPressed: _navigateToGestionHotels,
+                  child: Text("Gestion Hotels et Receptionnistes"),
+                ),
+              SizedBox(height: 20),
+            ],
+          ),
+        ),
+      );
+    } else {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text("Hotel Chatbot Assistant"),
+          actions: [
+            IconButton(
+              icon: Icon(Icons.settings),
+              onPressed: _resetClientInfo,
+              tooltip: 'Réinitialiser les informations client',
+            ),
+          ],
+        ),
+        body: Column(
+          children: [
+            if (_isConversationEscalated && _assignedReceptionistName != null)
+              _buildEscalationBadge(),
+            Expanded(
+              child: ListView.builder(
+                controller: _scrollController,
+                reverse: false,
+                itemCount: _messages.length,
+                itemBuilder: (context, index) => _buildMessage(_messages[index], index),
+              ),
+            ),
+            _buildInputArea(),
+            if (_showGestionButton)
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: ElevatedButton(
+                  onPressed: _navigateToGestionHotels,
+                  child: Text("Gestion Hotels et Receptionnistes"),
+                ),
+              ),
+            SizedBox(height: 20),
+          ],
+        ),
+      );
+    }
   }
 }
 
