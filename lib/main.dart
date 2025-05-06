@@ -100,22 +100,8 @@ class ChatScreenState extends State<ChatScreen> {
       if (role == 'receptionist') {
         _isReceptionist = true;
         if (receptionistName == null || receptionistName == 'null' || receptionistName.isEmpty) {
-          // Afficher une erreur et ne pas permettre d'accéder à la conversation
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            showDialog(
-              context: context,
-              barrierDismissible: false,
-              builder: (context) => AlertDialog(
-                title: Text('Erreur'),
-                content: Text('Le nom du réceptionniste doit être fourni dans l\'URL (receptionistName).'),
-                actions: [
-                  ElevatedButton(
-                    onPressed: () => html.window.location.href = Environment.webAppUrl,
-                    child: Text('Retour'),
-                  ),
-                ],
-              ),
-            );
+            _showErrorDialog("Le nom du réceptionniste doit être fourni dans l'URL (receptionistName).");
           });
           return;
         } else {
@@ -514,11 +500,12 @@ class ChatScreenState extends State<ChatScreen> {
       return;
     }
 
-    // Ajout du message dans Firestore avec le nom de l'expéditeur
+    // Définir le nom de l'expéditeur dynamiquement
+    String senderName = _isReceptionist
+      ? (_receptionistName ?? 'Réceptionniste')
+      : ((_clientPrenom != null && _clientNom != null) ? '$_clientPrenom $_clientNom' : 'Client');
+
     try {
-      String senderName = _isReceptionist
-        ? (_receptionistName ?? 'Réceptionniste')
-        : ((_clientPrenom != null && _clientNom != null) ? '$_clientPrenom $_clientNom' : 'Client');
       await FirebaseFirestore.instance
           .collection('conversations')
           .doc(_conversationId)
@@ -542,7 +529,6 @@ class ChatScreenState extends State<ChatScreen> {
     });
     _logChat();
 
-    // Si c'est le réceptionniste, il répond directement (pas de bot)
     if (_isReceptionist) {
       _scrollToBottom();
       return;
@@ -1241,12 +1227,27 @@ Future<String?> _askReceptionistNameDialog() async {
 }
 
 void _listenToMessages(String conversationId) {
-  setState(() {
-    _messagesStream = FirebaseFirestore.instance
-        .collection('conversations')
-        .doc(conversationId)
-        .collection('messages')
-        .orderBy('timestamp')
-        .snapshots();
-  });
+  _messagesStream = FirebaseFirestore.instance
+      .collection('conversations')
+      .doc(conversationId)
+      .collection('messages')
+      .orderBy('timestamp')
+      .snapshots();
+}
+
+Future<void> _showErrorDialog(String message) async {
+  await showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => AlertDialog(
+      title: Text('Erreur'),
+      content: Text(message),
+      actions: [
+        ElevatedButton(
+          onPressed: () => html.window.location.href = Environment.webAppUrl,
+          child: Text('Retour'),
+        ),
+      ],
+    ),
+  );
 }
