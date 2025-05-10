@@ -114,33 +114,42 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
   }
 
   Widget _buildMessage(Map<String, dynamic> data) {
-    // On considère que le réceptionniste courant est l'utilisateur de cette page
-    bool isReceptionistMessage = data['senderName'] == widget.receptionistName;
+    final sender = (data['senderName'] ?? "").toString();
+    final isReceptionistMessage = sender == widget.receptionistName;
+    final isBotMessage = sender == "Bot";
+    final isRight = isReceptionistMessage || isBotMessage;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
       child: Row(
-        mainAxisAlignment: isReceptionistMessage ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isRight ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
-          if (!isReceptionistMessage)
+          if (!isRight)
             CircleAvatar(
               backgroundColor: Colors.grey[700],
               child: Icon(Icons.person, color: Colors.white), // Client
             ),
-          if (!isReceptionistMessage) SizedBox(width: 10),
+          if (!isRight) SizedBox(width: 10),
           Flexible(
             child: Container(
-              padding: EdgeInsets.all(12),
+              padding: EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: isReceptionistMessage ? Colors.blueAccent : Colors.grey[800],
-                borderRadius: BorderRadius.circular(12),
+                color: isRight ? Color(0xFF2d2b31) : Colors.grey[850], // Anthracite pour réceptionniste/bot, gris foncé pour client
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  ),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    data['senderName'] ?? "",
-                    style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 13),
+                    sender,
+                    style: TextStyle(color: Color(0xFFe2001a), fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                   SizedBox(height: 2),
                   Text(data['text'], style: TextStyle(color: Colors.white, fontSize: 16)),
@@ -148,11 +157,13 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
               ),
             ),
           ),
-          if (isReceptionistMessage) SizedBox(width: 10),
-          if (isReceptionistMessage)
+          if (isRight) SizedBox(width: 10),
+          if (isRight)
             CircleAvatar(
               backgroundColor: Colors.blueAccent,
-              child: Icon(Icons.headset_mic, color: Colors.white), // Réceptionniste
+              child: isReceptionistMessage
+                  ? Icon(Icons.headset_mic, color: Colors.white) // Réceptionniste
+                  : Icon(Icons.smart_toy, color: Colors.white), // Bot
             ),
         ],
       ),
@@ -160,42 +171,49 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
   }
 
   Widget _buildInputArea() {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.grey[900],
-          borderRadius: BorderRadius.circular(30),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 4,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            SizedBox(width: 8),
-            Expanded(
-              child: TextField(
-                controller: _controller,
-                focusNode: _focusNode,
-                decoration: InputDecoration(
-                  hintText: "Écrivez votre message...",
-                  hintStyle: TextStyle(color: Colors.grey[500]),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 15),
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: 600),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.grey[900],
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.10),
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
                 ),
-                style: TextStyle(color: Colors.white),
-                onSubmitted: (value) => _sendMessage(),
-              ),
+              ],
+              border: Border.all(color: Color(0xFFe2001a), width: 1.5), // Rouge Hotix
             ),
-            IconButton(
-              icon: Icon(Icons.send, color: Colors.blueAccent),
-              onPressed: _sendMessage,
+            child: Row(
+              children: [
+                SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    focusNode: _focusNode,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      hintText: "Écrivez votre message...",
+                      hintStyle: TextStyle(color: Colors.grey[500]),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 15),
+                    ),
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                    onSubmitted: (value) => _sendMessage(),
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.send, color: Color(0xFFe2001a)), // Rouge Hotix
+                  onPressed: _sendMessage,
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -239,39 +257,45 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: _messagesStream,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(child: CircularProgressIndicator());
-                }
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return ListView(
-                    controller: _scrollController,
-                    children: [],
-                  );
-                }
-                final docs = snapshot.data!.docs;
-                return ListView.builder(
-                  controller: _scrollController,
-                  reverse: false,
-                  itemCount: docs.length,
-                  itemBuilder: (context, index) {
-                    final doc = docs[index];
-                    final data = doc.data() as Map<String, dynamic>;
-                    return _buildMessage(data);
+      body: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: 700),
+          child: Column(
+            children: [
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: _messagesStream,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Center(child: CircularProgressIndicator());
+                    }
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      return ListView(
+                        controller: _scrollController,
+                        children: [],
+                      );
+                    }
+                    final docs = snapshot.data!.docs;
+                    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+                    return ListView.builder(
+                      controller: _scrollController,
+                      reverse: false,
+                      itemCount: docs.length,
+                      itemBuilder: (context, index) {
+                        final doc = docs[index];
+                        final data = doc.data() as Map<String, dynamic>;
+                        return _buildMessage(data);
+                      },
+                    );
                   },
-                );
-              },
-            ),
+                ),
+              ),
+              _buildInputArea(),
+              SizedBox(height: 20),
+              _buildEscalationBadge(),
+            ],
           ),
-          _buildInputArea(),
-          SizedBox(height: 20),
-          _buildEscalationBadge(),
-        ],
+        ),
       ),
     );
   }

@@ -1012,26 +1012,23 @@ Voici l'historique :
                   ? Colors.blueAccent
                   : Colors.grey[700],
               child: (message.senderName != null && message.senderName == _assignedReceptionistName)
-                  ? Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Icon(Icons.person, color: Colors.white, size: 24),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: Icon(Icons.headset_mic, color: Colors.orangeAccent, size: 16),
-                        ),
-                      ],
-                    )
+                  ? Icon(Icons.headset_mic, color: Colors.white)
                   : Icon(Icons.smart_toy, color: Colors.white),
             ),
           if (!isUser) SizedBox(width: 10),
           Flexible(
             child: Container(
-              padding: EdgeInsets.all(12),
+              padding: EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: isUser ? Colors.blueAccent : Colors.grey[800],
-                borderRadius: BorderRadius.circular(12),
+                color: isUser ? Color(0xFF2d2b31) : Colors.grey[850],
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  ),
+                ],
               ),
               child: message.hasButtons
                   ? Column(
@@ -1050,7 +1047,7 @@ Voici l'historique :
                       children: [
                         Text(
                           message.senderName ?? (isUser ? "Moi" : "Bot"),
-                          style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 13),
+                          style: TextStyle(color: Color(0xFFe2001a), fontWeight: FontWeight.bold, fontSize: 13),
                         ),
                         SizedBox(height: 2),
                         Text(message.text, style: TextStyle(color: Colors.white, fontSize: 16)),
@@ -1070,53 +1067,49 @@ Voici l'historique :
   }
 
   Widget _buildInputArea() {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.grey[900],
-          borderRadius: BorderRadius.circular(30),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 4,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            SizedBox(width: 8),
-            Expanded(
-              child: TextField(
-                controller: _controller,
-                focusNode: _focusNode,
-                decoration: InputDecoration(
-                  hintText: "Type a message...",
-                  hintStyle: TextStyle(color: Colors.grey[500]),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 15),
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: 600),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.grey[900],
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.10),
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
                 ),
-                style: TextStyle(color: Colors.white),
-                onChanged: (value) {
-                  if (value.isNotEmpty) {
-                    _onUserTypingStart();
-                  } else {
-                    _onUserTypingStop();
-                  }
-                },
-                onEditingComplete: _onUserTypingStop,
-                onSubmitted: (value) {
-                  _onUserTypingStop();
-                  _sendMessage();
-                },
-              ),
+              ],
+              border: Border.all(color: Color(0xFFe2001a), width: 1.5),
             ),
-            IconButton(
-              icon: Icon(Icons.send, color: Colors.blueAccent),
-              onPressed: _sendMessage,
+            child: Row(
+              children: [
+                SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    focusNode: _focusNode,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      hintText: "Écrivez votre message...",
+                      hintStyle: TextStyle(color: Colors.grey[500]),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 15),
+                    ),
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                    onSubmitted: (value) => _sendMessage(),
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.send, color: Color(0xFFe2001a)),
+                  onPressed: _sendMessage,
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -1173,47 +1166,53 @@ Voici l'historique :
             ),
           ],
         ),
-        body: Column(
-          children: [
-            if (_isConversationEscalated && _assignedReceptionistName != null)
-              _buildEscalationBadge(),
-            Expanded(
-              child: StreamBuilder<QuerySnapshot>(
-                stream: _messagesStream,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(child: CircularProgressIndicator());
-                  }
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return ListView(
-                      controller: _scrollController,
-                      children: [],
-                    );
-                  }
-                  final docs = snapshot.data!.docs;
-                  return ListView.builder(
-                    controller: _scrollController,
-                    reverse: false,
-                    itemCount: docs.length,
-                    itemBuilder: (context, index) {
-                      final doc = docs[index];
-                      final data = doc.data() as Map<String, dynamic>;
-                      return _buildMessage(ChatMessage(
-                        text: data['text'],
-                        isUser: data['isUser'],
-                        senderName: data['senderName'],
-                        hasButtons: data['hasButtons'] == true,
-                        isTemporary: data['isTemporary'] == true,
-                        isTyping: data['isTyping'] == true,
-                      ), index);
+        body: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: 700),
+            child: Column(
+              children: [
+                if (_isConversationEscalated && _assignedReceptionistName != null)
+                  _buildEscalationBadge(),
+                Expanded(
+                  child: StreamBuilder<QuerySnapshot>(
+                    stream: _messagesStream,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return Center(child: CircularProgressIndicator());
+                      }
+                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                        return ListView(
+                          controller: _scrollController,
+                          children: [],
+                        );
+                      }
+                      final docs = snapshot.data!.docs;
+                      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+                      return ListView.builder(
+                        controller: _scrollController,
+                        reverse: false,
+                        itemCount: docs.length,
+                        itemBuilder: (context, index) {
+                          final doc = docs[index];
+                          final data = doc.data() as Map<String, dynamic>;
+                          return _buildMessage(ChatMessage(
+                            text: data['text'],
+                            isUser: data['isUser'],
+                            senderName: data['senderName'],
+                            hasButtons: data['hasButtons'] == true,
+                            isTemporary: data['isTemporary'] == true,
+                            isTyping: data['isTyping'] == true,
+                          ), index);
+                        },
+                      );
                     },
-                  );
-                },
-              ),
+                  ),
+                ),
+                _buildInputArea(),
+                SizedBox(height: 20),
+              ],
             ),
-            _buildInputArea(),
-            SizedBox(height: 20),
-          ],
+          ),
         ),
       );
     } else {
@@ -1228,55 +1227,61 @@ Voici l'historique :
             ),
           ],
         ),
-        body: Column(
-          children: [
-            if (_isConversationEscalated && _assignedReceptionistName != null)
-              _buildEscalationBadge(),
-            Expanded(
-              child: StreamBuilder<QuerySnapshot>(
-                stream: _messagesStream,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(child: CircularProgressIndicator());
-                  }
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return ListView(
-                      controller: _scrollController,
-                      children: [],
-                    );
-                  }
-                  final docs = snapshot.data!.docs;
-                  return ListView.builder(
-                    controller: _scrollController,
-                    reverse: false,
-                    itemCount: docs.length,
-                    itemBuilder: (context, index) {
-                      final doc = docs[index];
-                      final data = doc.data() as Map<String, dynamic>;
-                      return _buildMessage(ChatMessage(
-                        text: data['text'],
-                        isUser: data['isUser'],
-                        senderName: data['senderName'],
-                        hasButtons: data['hasButtons'] == true,
-                        isTemporary: data['isTemporary'] == true,
-                        isTyping: data['isTyping'] == true,
-                      ), index);
+        body: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: 700),
+            child: Column(
+              children: [
+                if (_isConversationEscalated && _assignedReceptionistName != null)
+                  _buildEscalationBadge(),
+                Expanded(
+                  child: StreamBuilder<QuerySnapshot>(
+                    stream: _messagesStream,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return Center(child: CircularProgressIndicator());
+                      }
+                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                        return ListView(
+                          controller: _scrollController,
+                          children: [],
+                        );
+                      }
+                      final docs = snapshot.data!.docs;
+                      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+                      return ListView.builder(
+                        controller: _scrollController,
+                        reverse: false,
+                        itemCount: docs.length,
+                        itemBuilder: (context, index) {
+                          final doc = docs[index];
+                          final data = doc.data() as Map<String, dynamic>;
+                          return _buildMessage(ChatMessage(
+                            text: data['text'],
+                            isUser: data['isUser'],
+                            senderName: data['senderName'],
+                            hasButtons: data['hasButtons'] == true,
+                            isTemporary: data['isTemporary'] == true,
+                            isTyping: data['isTyping'] == true,
+                          ), index);
+                        },
+                      );
                     },
-                  );
-                },
-              ),
-            ),
-            _buildInputArea(),
-            if (_showGestionButton)
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: ElevatedButton(
-                  onPressed: _navigateToGestionHotels,
-                  child: Text("Gestion Hotels et Receptionnistes"),
+                  ),
                 ),
-              ),
-            SizedBox(height: 20),
-          ],
+                _buildInputArea(),
+                if (_showGestionButton)
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: ElevatedButton(
+                      onPressed: _navigateToGestionHotels,
+                      child: Text("Gestion Hotels et Receptionnistes"),
+                    ),
+                  ),
+                SizedBox(height: 20),
+              ],
+            ),
+          ),
         ),
       );
     }
