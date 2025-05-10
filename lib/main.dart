@@ -828,9 +828,9 @@ class ChatScreenState extends State<ChatScreen> {
         setState(() {
           for (var msg in messages) {
             _messages.add(ChatMessage(
-              text: msg['text']!,
-              isUser: msg['isUser']!,
-              senderName: msg['senderName'],
+              text: msg['text'] as String,
+              isUser: msg['isUser'] as bool,
+              senderName: msg['senderName'] as String?,
             ));
           }
         });
