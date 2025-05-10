@@ -114,46 +114,32 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
   }
 
   Widget _buildMessage(Map<String, dynamic> data) {
-    bool isUser = data['isUser'] ?? false;
-    String senderName = data['senderName'] ?? (isUser ? "Client" : "Bot");
+    // On considère que le réceptionniste courant est l'utilisateur de cette page
+    bool isReceptionistMessage = data['senderName'] == widget.receptionistName;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
       child: Row(
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isReceptionistMessage ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
-          if (!isUser)
+          if (!isReceptionistMessage)
             CircleAvatar(
-              backgroundColor: (data['senderName'] == widget.assignedReceptionistName)
-                  ? Colors.blueAccent
-                  : Colors.grey[700],
-              child: (data['senderName'] == widget.assignedReceptionistName)
-                  ? Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Icon(Icons.person, color: Colors.white, size: 24),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: Icon(Icons.headset_mic, color: Colors.orangeAccent, size: 16),
-                        ),
-                      ],
-                    )
-                  : Icon(Icons.smart_toy, color: Colors.white),
+              backgroundColor: Colors.grey[700],
+              child: Icon(Icons.person, color: Colors.white), // Client
             ),
-          if (!isUser) SizedBox(width: 10),
+          if (!isReceptionistMessage) SizedBox(width: 10),
           Flexible(
             child: Container(
               padding: EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isUser ? Colors.blueAccent : Colors.grey[800],
+                color: isReceptionistMessage ? Colors.blueAccent : Colors.grey[800],
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    senderName,
+                    data['senderName'] ?? "",
                     style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                   SizedBox(height: 2),
@@ -162,11 +148,11 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
               ),
             ),
           ),
-          if (isUser) SizedBox(width: 10),
-          if (isUser)
+          if (isReceptionistMessage) SizedBox(width: 10),
+          if (isReceptionistMessage)
             CircleAvatar(
               backgroundColor: Colors.blueAccent,
-              child: Icon(Icons.person, color: Colors.white),
+              child: Icon(Icons.headset_mic, color: Colors.white), // Réceptionniste
             ),
         ],
       ),

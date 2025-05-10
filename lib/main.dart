@@ -723,9 +723,14 @@ class ChatScreenState extends State<ChatScreen> {
       List<Map<String, String>> conversationContext = _buildChatContext();
       try {
         // Générer le résumé via Ollama
-        final summaryPrompt = "Fais un résumé concis et clair de la conversation entre le client et le chatbot. Le résumé doit être dans la langue du client et aider le réceptionniste à comprendre rapidement le contexte et les besoins du client. Sois bref et précis.\n" +
+        final summaryPrompt = """
+Fais un résumé ultra-court (1 à 2 phrases maximum) de la demande ou du problème du client dans cette conversation, en français.
+Ne répète pas les salutations ni les détails inutiles. Va à l'essentiel pour que le réceptionniste comprenne immédiatement le besoin du client.
+Exemple attendu : "Le client souhaite connaître les tarifs des chambres." ou "Le client a un problème avec sa réservation."
+Voici l'historique :
+""" +
           conversationContext.map((m) => (m["role"] == "user" ? "Client : " : "Assistant : ") + (m["content"] ?? "")).join("\n") +
-          "\nAssistant :";
+          "\nRésumé :";
         
         final summaryResponse = await http.post(
           Uri.parse(Environment.apiBaseUrl + '/predictions'),
