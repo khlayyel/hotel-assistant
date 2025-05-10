@@ -12,6 +12,7 @@ import 'screens/gestion_hotels_screen.dart'; // Nouvel import
 import 'package:dropdown_search/dropdown_search.dart';
 import 'config/environment.dart';
 import 'dart:html' as html;
+import 'screens/receptionist_screen.dart';
 
 void main() async{
     WidgetsFlutterBinding.ensureInitialized();
@@ -77,8 +78,53 @@ class ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    _loadClientInfo();
-    _hotelSearchController.addListener(_onHotelInputChanged);
+
+    if (kIsWeb) {
+      final uri = Uri.base;
+      final conversationIdFromUrl = uri.pathSegments.length >= 2 && uri.pathSegments[0] == 'conversation'
+          ? uri.pathSegments[1]
+          : null;
+      final role = uri.queryParameters['role'];
+      String? receptionistName = uri.queryParameters['receptionistName'];
+      
+      if (role == 'receptionist') {
+        if (receptionistName == null || receptionistName == 'null' || receptionistName.isEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _showErrorDialog("Le nom du réceptionniste doit être fourni dans l'URL (receptionistName).");
+          });
+          return;
+        }
+        
+        if (conversationIdFromUrl != null && conversationIdFromUrl.isNotEmpty) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ReceptionistScreen(
+                conversationId: conversationIdFromUrl,
+                receptionistName: receptionistName,
+              ),
+            ),
+          );
+          return;
+        }
+      }
+      
+      if (conversationIdFromUrl != null && conversationIdFromUrl.isNotEmpty) {
+        setState(() {
+          _conversationId = conversationIdFromUrl;
+          _showWelcomeMessage = false;
+        });
+        _listenToMessages(conversationIdFromUrl);
+        _checkEscalationStatus(conversationIdFromUrl);
+      }
+    }
+
+    // 2. Ensuite, charger les infos client SEULEMENT si ce n'est PAS un réceptionniste
+    if (!_isReceptionist) {
+      _loadClientInfo();
+      _hotelSearchController.addListener(_onHotelInputChanged);
+    }
+
     if (kIsWeb) {
       html.window.onBeforeUnload.listen((event) async {
         final prefs = await SharedPreferences.getInstance();
@@ -88,37 +134,6 @@ class ChatScreenState extends State<ChatScreen> {
         await prefs.remove('clientHotelName');
         await prefs.remove('conversationId');
       });
-    }
-    // Gestion du paramètre conversationId et du rôle dans l'URL (Flutter Web)
-    if (kIsWeb) {
-      final uri = Uri.base;
-      final conversationIdFromUrl = uri.pathSegments.length >= 2 && uri.pathSegments[0] == 'conversation'
-          ? uri.pathSegments[1]
-          : null;
-      final role = uri.queryParameters['role'];
-      String? receptionistName = uri.queryParameters['receptionistName'];
-      if (role == 'receptionist') {
-        _isReceptionist = true;
-        if (receptionistName == null || receptionistName == 'null' || receptionistName.isEmpty) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _showErrorDialog("Le nom du réceptionniste doit être fourni dans l'URL (receptionistName).");
-          });
-          return;
-        } else {
-          _receptionistName = receptionistName;
-        }
-      }
-      if (conversationIdFromUrl != null && conversationIdFromUrl.isNotEmpty) {
-        setState(() {
-          _conversationId = conversationIdFromUrl;
-          _showWelcomeMessage = false;
-        });
-        _listenToMessages(conversationIdFromUrl);
-        _checkEscalationStatus(conversationIdFromUrl);
-        if (_isReceptionist && _receptionistName != null && _receptionistName != 'null') {
-          _assignReceptionistToConversation(conversationIdFromUrl, _receptionistName!);
-        }
-      }
     }
   }
 
@@ -501,32 +516,60 @@ class ChatScreenState extends State<ChatScreen> {
       return;
     }
 
-    // Définir le nom de l'expéditeur dynamiquement
+    // AJOUT : Si un réceptionniste est en charge, on ne fait plus jamais d'escalade ni de question métier
+    if (_assignedReceptionistName != null) {
+      // Le bot ne doit plus répondre, ni proposer d'escalade
+      return;
+    }
+
     String senderName = _isReceptionist
       ? (_receptionistName ?? 'Réceptionniste')
       : ((_clientPrenom != null && _clientNom != null) ? '$_clientPrenom $_clientNom' : 'Client');
 
-    try {
+    // === ENVOI DU MESSAGE PAR LE RÉCEPTIONNISTE ===
+    if (_isReceptionist) {
       await FirebaseFirestore.instance
           .collection('conversations')
           .doc(_conversationId)
           .collection('messages')
           .add({
         'text': userMessage,
-        'isUser': !_isReceptionist,
+        'isUser': false,
+        'timestamp': FieldValue.serverTimestamp(),
+        'senderName': _receptionistName ?? 'Réceptionniste',
+      });
+
+      setState(() {
+        _messages.add(ChatMessage(
+          text: userMessage,
+          isUser: true,
+          senderName: _receptionistName ?? 'Réceptionniste',
+        ));
+      });
+      _scrollToBottom();
+      return;
+    }
+
+    // === ENVOI DU MESSAGE PAR LE CLIENT ===
+    if (!_isReceptionist) {
+      await FirebaseFirestore.instance
+          .collection('conversations')
+          .doc(_conversationId)
+          .collection('messages')
+          .add({
+        'text': userMessage,
+        'isUser': true,
         'timestamp': FieldValue.serverTimestamp(),
         'senderName': senderName,
       });
-    } catch (e) {
-      print('❌ Erreur sauvegarde message: $e');
     }
 
+    await _removeBotTypingMessage();
+
     setState(() {
-      _messages.add(ChatMessage(text: userMessage, isUser: !_isReceptionist, senderName: senderName));
-      _isTyping = !_isReceptionist;
-      if (!_isReceptionist) {
-        _messages.add(ChatMessage(text: "Bot is typing...", isUser: false, isTemporary: true));
-      }
+      _messages.add(ChatMessage(text: userMessage, isUser: true, senderName: senderName));
+      _isTyping = true;
+      _messages.add(ChatMessage(text: "Bot est en train d'écrire.", isUser: false, isTemporary: true));
     });
     _logChat();
 
@@ -535,7 +578,31 @@ class ChatScreenState extends State<ChatScreen> {
       return;
     }
 
-    // Détection de la langue du message utilisateur
+    // Nouvelle logique : n'escalader QUE si aucun réceptionniste n'est assigné ET pas déjà escaladé
+    if (_questionConcerneHotel(userMessage) && _assignedReceptionistName == null && !_isConversationEscalated) {
+      await _removeBotTypingMessage();
+      await FirebaseFirestore.instance
+          .collection('conversations')
+          .doc(_conversationId)
+          .collection('messages')
+          .add({
+        'text': "Je suis un assistant virtuel et je ne peux pas répondre à cette question spécifique. Voulez-vous qu'un réceptionniste humain vous aide ?",
+        'isUser': false,
+        'timestamp': FieldValue.serverTimestamp(),
+        'senderName': "Bot",
+        'hasButtons': true,
+      });
+      print('Question métier détectée, proposition d\'escalade.');
+      _logChat();
+      return;
+    }
+
+    if (_showWelcomeMessage) {
+      setState(() {
+        _showWelcomeMessage = false;
+      });
+    }
+
     String userLang = detectLanguage(userMessage);
     String systemPrompt;
     if (userLang == 'en') {
@@ -548,42 +615,8 @@ class ChatScreenState extends State<ChatScreen> {
       systemPrompt = "Tu es l'assistant virtuel de l'hôtel "+(_selectedHotelName ?? "")+". Réponds de façon naturelle, chaleureuse et professionnelle, comme un vrai réceptionniste. Sois toujours poli, aide le client pour ses besoins (réservations, services, infos, etc.), et ne demande jamais d'informations sensibles. Le client s'exprime dans sa langue.";
     }
 
-    // Gestion spéciale pour le message "gestion"
-    if (userMessage.toLowerCase() == "gestion") {
-      setState(() {
-        _showGestionButton = true;
-        _messages.add(ChatMessage(text: userMessage, isUser: true));
-        _messages.add(ChatMessage(
-          text: "Bienvenue dans la gestion des hôtels ! Vous pouvez accéder à l'interface de gestion en cliquant sur le bouton ci-dessous.",
-          isUser: false
-        ));
-      });
-      _logChat();
-      return;
-    }
-
-    if (_showWelcomeMessage) {
-      setState(() {
-        _showWelcomeMessage = false;
-      });
-    }
-
-    // LOGIQUE STRICTE : jamais de réponse IA sur un sujet métier, toujours escalade
-    if (_questionConcerneHotel(userMessage)) {
-      setState(() {
-        _messages.removeWhere((msg) => msg.isTemporary);
-        _messages.add(ChatMessage(
-          text: "Je suis un assistant virtuel et je ne peux pas répondre à cette question spécifique. Voulez-vous qu'un réceptionniste humain vous aide ?",
-          isUser: false,
-          hasButtons: true,
-        ));
-      });
-      print('Question métier détectée, proposition d\'escalade.');
-      _logChat();
-      return;
-    }
-
     try {
+      await _removeBotTypingMessage();
       final prompt = systemPrompt + "\n" +
         _messages
           .where((msg) => !msg.isTemporary)
@@ -592,6 +625,14 @@ class ChatScreenState extends State<ChatScreen> {
         "\nAssistant :";
       print('Prompt envoyé à l\'IA : $prompt');
       // Appel à Ollama
+      final conversationDoc = await FirebaseFirestore.instance
+          .collection('conversations')
+          .doc(_conversationId)
+          .get();
+      if (conversationDoc.exists && conversationDoc.data()?['assignedReceptionist'] != null) {
+        // Un réceptionniste est en charge, le bot NE répond pas
+        return;
+      }
       final predictionResponse = await http.post(
         Uri.parse(Environment.apiBaseUrl + '/predictions'),
         headers: {
@@ -634,6 +675,21 @@ class ChatScreenState extends State<ChatScreen> {
         });
         _logChat();
       }
+
+      try {
+        await FirebaseFirestore.instance
+            .collection('conversations')
+            .doc(_conversationId)
+            .collection('messages')
+            .add({
+          'text': botReply,
+          'isUser': false,
+          'timestamp': FieldValue.serverTimestamp(),
+          'senderName': "Bot",
+        });
+      } catch (e) {
+        print('❌ Erreur sauvegarde message bot: $e');
+      }
     } catch (e) {
       setState(() {
         _messages.removeWhere((msg) => msg.isTemporary);
@@ -662,6 +718,7 @@ class ChatScreenState extends State<ChatScreen> {
         );
       }
     });
+
     if (response == "Oui") {
       List<Map<String, String>> conversationContext = _buildChatContext();
       try {
@@ -722,71 +779,73 @@ class ChatScreenState extends State<ChatScreen> {
           return;
         }
 
-        // Récupérer tous les emails de tous les réceptionnistes disponibles
-        final allEmails = <String>[];
+        // Envoyer les notifications aux réceptionnistes
         for (var doc in receptionistsSnap.docs) {
           final emailsList = doc['emails'] as List<dynamic>;
           final receptionistName = doc['name'] as String?;
-          for (var emailObj in emailsList) {
-            final email = emailObj['address'] as String?;
-            if (email != null && email.isNotEmpty && receptionistName != null && receptionistName.isNotEmpty) {
-              final conversationLink = '${Environment.webAppUrl}/conversation/$_conversationId?role=receptionist&receptionistName=${Uri.encodeComponent(receptionistName)}';
-              await http.post(
-                Uri.parse(Environment.apiBaseUrl + '/sendNotification'),
-                headers: {'Content-Type': 'application/json'},
-                body: jsonEncode({
-                  'title': 'Nouvelle conversation client',
-                  'body': 'Un client a besoin de votre assistance !\n\nRésumé de la conversation :\n$summary\n\nAccéder à la conversation : $conversationLink',
-                  'conversationId': _conversationId,
-                  'emails': [email],
-                  'conversationLink': conversationLink
-                }),
-              );
+          if (receptionistName != null && receptionistName.isNotEmpty) {
+            final conversationLink = '${Environment.webAppUrl}/conversation/$_conversationId?role=receptionist&receptionistName=${Uri.encodeComponent(receptionistName)}';
+            
+            for (var emailObj in emailsList) {
+              final email = emailObj['address'] as String?;
+              if (email != null && email.isNotEmpty) {
+                await http.post(
+                  Uri.parse(Environment.apiBaseUrl + '/sendNotification'),
+                  headers: {'Content-Type': 'application/json'},
+                  body: jsonEncode({
+                    'title': 'Nouvelle conversation client',
+                    'body': 'Un client a besoin de votre assistance !\n\nRésumé de la conversation :\n$summary\n\nAccéder à la conversation : $conversationLink',
+                    'conversationId': _conversationId,
+                    'emails': [email],
+                    'conversationLink': conversationLink
+                  }),
+                );
+              }
             }
           }
         }
 
-        // Vérifier qu'il y a au moins un email
-        if (allEmails.isEmpty) {
-          setState(() {
-            _messages.add(ChatMessage(
-              text: "Erreur : aucun email valide trouvé pour les réceptionnistes.",
-              isUser: false
-            ));
-          });
-          return;
-        }
+        // Ajouter les messages dans l'interface ET dans Firestore
+        final messages = [
+          {
+            'text': "Patientez un moment, un réceptionniste va vous rejoindre immédiatement.",
+            'isUser': false,
+            'senderName': "Bot"
+          },
+          {
+            'text': "Résumé pour le réceptionniste :",
+            'isUser': false,
+            'senderName': "Bot"
+          },
+          {
+            'text': summary,
+            'isUser': false,
+            'senderName': "Bot"
+          }
+        ];
 
-        // Générer un lien unique pour cette conversation
-        final conversationLink = '${Environment.webAppUrl}/conversation/$_conversationId?role=receptionist&receptionistName=$_receptionistName';
-
-        // Envoyer la notification à tous les emails
-        final responseNotif = await http.post(
-          Uri.parse(Environment.apiBaseUrl + '/sendNotification'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'title': 'Nouvelle conversation client',
-            'body': 'Un client a besoin de votre assistance !\n\nRésumé de la conversation :\n$summary\n\nAccéder à la conversation : $conversationLink',
-            'conversationId': _conversationId,
-            'emails': allEmails,
-            'conversationLink': conversationLink
-          }),
-        );
-
+        // Ajouter dans l'interface
         setState(() {
-          _messages.add(ChatMessage(
-            text: "Un réceptionniste a été notifié et va rejoindre la conversation...",
-            isUser: false
-          ));
-          _messages.add(ChatMessage(
-            text: "Résumé pour le réceptionniste :",
-            isUser: false
-          ));
-          _messages.add(ChatMessage(
-            text: summary,
-            isUser: false
-          ));
+          for (var msg in messages) {
+            _messages.add(ChatMessage(
+              text: msg['text']!,
+              isUser: msg['isUser']!,
+              senderName: msg['senderName'],
+            ));
+          }
         });
+
+        // Ajouter dans Firestore
+        for (var msg in messages) {
+          await FirebaseFirestore.instance
+              .collection('conversations')
+              .doc(_conversationId)
+              .collection('messages')
+              .add({
+            ...msg,
+            'timestamp': FieldValue.serverTimestamp(),
+          });
+        }
 
         _logChat();
       } catch (e) {
@@ -799,12 +858,14 @@ class ChatScreenState extends State<ChatScreen> {
         });
       }
     } else {
+      await _removeBotTypingMessage();
       setState(() {
         _messages.add(ChatMessage(text: "D'accord, je vais essayer de mieux vous aider.", isUser: false));
       });
       _logChat();
     }
     _scrollToBottom();
+    await _removeEscalationButtonsMessage();
   }
 
   String _buildResume() {
@@ -884,15 +945,80 @@ class ChatScreenState extends State<ChatScreen> {
     bool isTemporary = message.isTemporary;
     String sender = message.senderName ?? (isUser ? "Client" : "Bot");
     if (_isReceptionist && !isUser && message.senderName != null) sender = message.senderName!;
+    
+    if (isTemporary) {
+      if (!_isReceptionist && message.senderName == "Bot") {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                backgroundColor: Colors.grey[700],
+                child: Icon(Icons.smart_toy, color: Colors.white),
+              ),
+              SizedBox(width: 10),
+              AnimatedDots(sender: "Bot"),
+            ],
+          ),
+        );
+      }
+      if (_isReceptionist) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                backgroundColor: message.senderName == _assignedReceptionistName ? Colors.blueAccent : Colors.grey[700],
+                child: message.senderName == _assignedReceptionistName
+                  ? Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Icon(Icons.person, color: Colors.white, size: 24),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: Icon(Icons.headset_mic, color: Colors.orangeAccent, size: 16),
+                        ),
+                      ],
+                    )
+                  : Icon(Icons.person, color: Colors.white),
+              ),
+              SizedBox(width: 10),
+              AnimatedDots(sender: message.senderName ?? ''),
+            ],
+          ),
+        );
+      }
+      return SizedBox.shrink();
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
       child: Row(
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         children: [
           if (!isUser)
             CircleAvatar(
-              backgroundColor: Colors.grey[700],
-              child: Icon(Icons.smart_toy, color: Colors.white),
+              backgroundColor: (message.senderName != null && message.senderName == _assignedReceptionistName)
+                  ? Colors.blueAccent
+                  : Colors.grey[700],
+              child: (message.senderName != null && message.senderName == _assignedReceptionistName)
+                  ? Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Icon(Icons.person, color: Colors.white, size: 24),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: Icon(Icons.headset_mic, color: Colors.orangeAccent, size: 16),
+                        ),
+                      ],
+                    )
+                  : Icon(Icons.smart_toy, color: Colors.white),
             ),
           if (!isUser) SizedBox(width: 10),
           Flexible(
@@ -902,23 +1028,7 @@ class ChatScreenState extends State<ChatScreen> {
                 color: isUser ? Colors.blueAccent : Colors.grey[800],
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: isTemporary
-                  ? Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.0,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  Text("Bot is typing...", style: TextStyle(color: Colors.white, fontSize: 16)),
-                ],
-              )
-                  : message.hasButtons
+              child: message.hasButtons
                   ? Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -933,7 +1043,10 @@ class ChatScreenState extends State<ChatScreen> {
                   : Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(sender, style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 13)),
+                        Text(
+                          message.senderName ?? (isUser ? "Moi" : "Bot"),
+                          style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
                         SizedBox(height: 2),
                         Text(message.text, style: TextStyle(color: Colors.white, fontSize: 16)),
                       ],
@@ -980,8 +1093,17 @@ class ChatScreenState extends State<ChatScreen> {
                   contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 15),
                 ),
                 style: TextStyle(color: Colors.white),
+                onChanged: (value) {
+                  if (value.isNotEmpty) {
+                    _onUserTypingStart();
+                  } else {
+                    _onUserTypingStop();
+                  }
+                },
+                onEditingComplete: _onUserTypingStop,
                 onSubmitted: (value) {
-                  _sendMessage(); // Send the message when Enter is pressed
+                  _onUserTypingStop();
+                  _sendMessage();
                 },
               ),
             ),
@@ -1034,7 +1156,6 @@ class ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Si mode réceptionniste, pas de welcome, juste la conversation
     if (_isReceptionist && _conversationId != null) {
       return Scaffold(
         appBar: AppBar(
@@ -1055,14 +1176,14 @@ class ChatScreenState extends State<ChatScreen> {
               child: StreamBuilder<QuerySnapshot>(
                 stream: _messagesStream,
                 builder: (context, snapshot) {
-                  if (_messagesStream == null) {
-                    return Center(child: Text("Aucune conversation en cours."));
-                  }
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return Center(child: CircularProgressIndicator());
                   }
                   if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return Center(child: Text("Aucun message pour l'instant."));
+                    return ListView(
+                      controller: _scrollController,
+                      children: [],
+                    );
                   }
                   final docs = snapshot.data!.docs;
                   return ListView.builder(
@@ -1076,6 +1197,9 @@ class ChatScreenState extends State<ChatScreen> {
                         text: data['text'],
                         isUser: data['isUser'],
                         senderName: data['senderName'],
+                        hasButtons: data['hasButtons'] == true,
+                        isTemporary: data['isTemporary'] == true,
+                        isTyping: data['isTyping'] == true,
                       ), index);
                     },
                   );
@@ -1085,41 +1209,6 @@ class ChatScreenState extends State<ChatScreen> {
             _buildInputArea(),
             SizedBox(height: 20),
           ],
-        ),
-      );
-    }
-    // Sinon, comportement normal (client)
-    if (_showWelcomeMessage && _messages.isEmpty && _conversationId == null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text("Hotel Chatbot Assistant"),
-          actions: [
-            IconButton(
-              icon: Icon(Icons.settings),
-              onPressed: _resetClientInfo,
-              tooltip: 'Réinitialiser les informations client',
-            ),
-          ],
-        ),
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                "Bonjour ! Je suis l'assistant virtuel de l'hôtel. Je peux répondre à vos questions générales sur l'établissement. Pour toute question sur les prix, chambres, services ou réservations, je vous proposerai d'être mis en relation avec un réceptionniste humain.",
-                style: TextStyle(color: Colors.grey[400], fontSize: 18, fontWeight: FontWeight.w500),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 20),
-              _buildInputArea(),
-              if (_showGestionButton)
-                ElevatedButton(
-                  onPressed: _navigateToGestionHotels,
-                  child: Text("Gestion Hotels et Receptionnistes"),
-                ),
-              SizedBox(height: 20),
-            ],
-          ),
         ),
       );
     } else {
@@ -1142,14 +1231,14 @@ class ChatScreenState extends State<ChatScreen> {
               child: StreamBuilder<QuerySnapshot>(
                 stream: _messagesStream,
                 builder: (context, snapshot) {
-                  if (_messagesStream == null) {
-                    return Center(child: Text("Aucune conversation en cours."));
-                  }
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return Center(child: CircularProgressIndicator());
                   }
                   if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return Center(child: Text("Aucun message pour l'instant."));
+                    return ListView(
+                      controller: _scrollController,
+                      children: [],
+                    );
                   }
                   final docs = snapshot.data!.docs;
                   return ListView.builder(
@@ -1163,6 +1252,9 @@ class ChatScreenState extends State<ChatScreen> {
                         text: data['text'],
                         isUser: data['isUser'],
                         senderName: data['senderName'],
+                        hasButtons: data['hasButtons'] == true,
+                        isTemporary: data['isTemporary'] == true,
+                        isTyping: data['isTyping'] == true,
                       ), index);
                     },
                   );
@@ -1225,6 +1317,69 @@ class ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
+
+  Future<void> _removeEscalationButtonsMessage() async {
+    final snap = await FirebaseFirestore.instance
+        .collection('conversations')
+        .doc(_conversationId)
+        .collection('messages')
+        .where('hasButtons', isEqualTo: true)
+        .get();
+    for (var doc in snap.docs) {
+      await doc.reference.delete();
+    }
+  }
+
+  Future<void> _removeBotTypingMessage() async {
+    final snap = await FirebaseFirestore.instance
+        .collection('conversations')
+        .doc(_conversationId)
+        .collection('messages')
+        .where('isTemporary', isEqualTo: true)
+        .get();
+    for (var doc in snap.docs) {
+      await doc.reference.delete();
+    }
+  }
+
+  void _onUserTypingStart() async {
+    if (!_isReceptionist) return;
+    String senderName = _receptionistName ?? 'Réceptionniste';
+    final snap = await FirebaseFirestore.instance
+        .collection('conversations')
+        .doc(_conversationId)
+        .collection('messages')
+        .where('isTyping', isEqualTo: true)
+        .where('senderName', isEqualTo: senderName)
+        .get();
+    if (snap.docs.isEmpty) {
+      await FirebaseFirestore.instance
+          .collection('conversations')
+          .doc(_conversationId)
+          .collection('messages')
+          .add({
+        'isTyping': true,
+        'isUser': false,
+        'timestamp': FieldValue.serverTimestamp(),
+        'senderName': senderName,
+      });
+    }
+  }
+
+  void _onUserTypingStop() async {
+    if (!_isReceptionist) return;
+    String senderName = _receptionistName ?? 'Réceptionniste';
+    final snap = await FirebaseFirestore.instance
+        .collection('conversations')
+        .doc(_conversationId)
+        .collection('messages')
+        .where('isTyping', isEqualTo: true)
+        .where('senderName', isEqualTo: senderName)
+        .get();
+    for (var doc in snap.docs) {
+      await doc.reference.delete();
+    }
+  }
 }
 
 class ChatMessage {
@@ -1233,8 +1388,9 @@ class ChatMessage {
   final bool isTemporary;
   final bool hasButtons;
   final String? senderName;
+  final bool isTyping;
 
-  ChatMessage({required this.text, required this.isUser, this.isTemporary = false, this.hasButtons = false, this.senderName});
+  ChatMessage({required this.text, required this.isUser, this.isTemporary = false, this.hasButtons = false, this.senderName, this.isTyping = false});
 }
 
 Future<void> libererReceptionniste(String hotelId, String receptionistId) async {
@@ -1247,4 +1403,45 @@ Future<void> libererReceptionniste(String hotelId, String receptionistId) async 
         'isAvailable': true,
         'currentConversationId': null,
       });
+}
+
+class AnimatedDots extends StatefulWidget {
+  final String sender;
+  AnimatedDots({required this.sender});
+  @override
+  _AnimatedDotsState createState() => _AnimatedDotsState();
+}
+
+class _AnimatedDotsState extends State<AnimatedDots> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<int> _dotCount;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: Duration(milliseconds: 900),
+      vsync: this,
+    )..repeat();
+    _dotCount = StepTween(begin: 1, end: 3).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.linear),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _dotCount,
+      builder: (context, child) {
+        String dots = '.' * _dotCount.value;
+        return Text('${widget.sender} est en train d\'écrire$dots', style: TextStyle(color: Colors.white, fontSize: 16));
+      },
+    );
+  }
 }
