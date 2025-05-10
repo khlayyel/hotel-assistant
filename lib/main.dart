@@ -704,6 +704,13 @@ class ChatScreenState extends State<ChatScreen> {
     });
     _scrollToBottom();
     _focusNode.requestFocus();
+
+    // Affichage du bouton gestion si le message est "gestion"
+    if (userMessage.toLowerCase() == "gestion") {
+      setState(() {
+        _showGestionButton = true;
+      });
+    }
   }
 
   void _handleEscalationResponse(String response) async {
@@ -1278,6 +1285,11 @@ Voici l'historique :
                     child: ElevatedButton(
                       onPressed: _navigateToGestionHotels,
                       child: Text("Gestion Hotels et Receptionnistes"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFFe2001a),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                      ),
                     ),
                   ),
                 SizedBox(height: 20),
