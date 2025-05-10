@@ -134,7 +134,7 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
             child: Container(
               padding: EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: isRight ? Color(0xFF2d2b31) : Colors.grey[850], // Anthracite pour réceptionniste/bot, gris foncé pour client
+                color: isRight ? Color(0xFF2d2b31) : Colors.grey[850],
                 borderRadius: BorderRadius.circular(18),
                 boxShadow: [
                   BoxShadow(
@@ -160,10 +160,10 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
           if (isRight) SizedBox(width: 10),
           if (isRight)
             CircleAvatar(
-              backgroundColor: Colors.blueAccent,
+              backgroundColor: Colors.grey[900],
               child: isReceptionistMessage
-                  ? Icon(Icons.headset_mic, color: Colors.white) // Réceptionniste
-                  : Icon(Icons.smart_toy, color: Colors.white), // Bot
+                  ? Icon(Icons.headset_mic, color: Color(0xFFe2001a)) // Réceptionniste = casque
+                  : Icon(Icons.smart_toy, color: Color(0xFFe2001a)), // Bot = robot
             ),
         ],
       ),

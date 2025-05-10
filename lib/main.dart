@@ -1009,11 +1009,13 @@ Voici l'historique :
           if (!isUser)
             CircleAvatar(
               backgroundColor: (message.senderName != null && message.senderName == _assignedReceptionistName)
-                  ? Colors.blueAccent
+                  ? Colors.grey[900]
                   : Colors.grey[700],
               child: (message.senderName != null && message.senderName == _assignedReceptionistName)
-                  ? Icon(Icons.headset_mic, color: Colors.white)
-                  : Icon(Icons.smart_toy, color: Colors.white),
+                  // Réceptionniste = casque
+                  ? Icon(Icons.headset_mic, color: Color(0xFFe2001a))
+                  // Bot = robot
+                  : Icon(Icons.smart_toy, color: Color(0xFFe2001a)),
             ),
           if (!isUser) SizedBox(width: 10),
           Flexible(
@@ -1058,7 +1060,7 @@ Voici l'historique :
           if (isUser) SizedBox(width: 10),
           if (isUser)
             CircleAvatar(
-              backgroundColor: Colors.blueAccent,
+              backgroundColor: Color(0xFFe2001a),
               child: Icon(Icons.person, color: Colors.white),
             ),
         ],
