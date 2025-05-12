@@ -114,61 +114,82 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
   }
 
   Widget _buildMessage(Map<String, dynamic> data) {
-    final sender = (data['senderName'] ?? "").toString();
-    final isReceptionistMessage = sender == widget.receptionistName;
-    final isBotMessage = sender == "Bot";
-    final isRight = isReceptionistMessage || isBotMessage;
+    String sender = (data['senderName'] ?? '').toString();
+    bool isReceptionist = sender == widget.receptionistName;
+    bool isBot = sender == 'Bot';
+    bool alignRight = isReceptionist || isBot;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-      child: Row(
-        mainAxisAlignment: isRight ? MainAxisAlignment.end : MainAxisAlignment.start,
-        children: [
-          if (!isRight)
-            CircleAvatar(
-              backgroundColor: Colors.grey[700],
-              child: Icon(Icons.person, color: Colors.white), // Client
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+    child: Row(
+      mainAxisAlignment:
+          alignRight ? MainAxisAlignment.end : MainAxisAlignment.start,
+      children: [
+        // Avatar on the left for the client
+        if (!alignRight) ...[
+          CircleAvatar(
+            backgroundColor: Colors.grey[700],
+            child: Icon(Icons.person, color: Colors.white),
+          ),
+          SizedBox(width: 10),
+        ],
+
+        // The message bubble
+        Flexible(
+          child: Container(
+            padding: EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: alignRight ? Color(0xFF2d2b31) : Colors.grey[850],
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 4,
+                  offset: Offset(0, 2),
+                ),
+              ],
             ),
-          if (!isRight) SizedBox(width: 10),
-          Flexible(
-            child: Container(
-              padding: EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: isRight ? Color(0xFF2d2b31) : Colors.grey[850],
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Sender name
+                Text(
+                  sender,
+                  style: TextStyle(
+                    color: Color(0xFFe2001a),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
                   ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    sender,
-                    style: TextStyle(color: Color(0xFFe2001a), fontWeight: FontWeight.bold, fontSize: 13),
-                  ),
-                  SizedBox(height: 2),
-                  Text(data['text'], style: TextStyle(color: Colors.white, fontSize: 16)),
-                ],
-              ),
+                ),
+                SizedBox(height: 2),
+                // Message text
+                Text(
+                  data['text'] ?? '',
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ],
             ),
           ),
-          if (isRight) SizedBox(width: 10),
-          if (isRight)
-            CircleAvatar(
-              backgroundColor: Colors.grey[900],
-              child: isReceptionistMessage
-                  ? Icon(Icons.headset_mic, color: Color(0xFFe2001a)) // Réceptionniste = casque
-                  : Icon(Icons.smart_toy, color: Color(0xFFe2001a)), // Bot = robot
+        ),
+
+        // Avatar on the right for bot/receptionist
+        if (alignRight) ...[
+          SizedBox(width: 10),
+          CircleAvatar(
+            backgroundColor:
+                isReceptionist ? Colors.grey[900] : Colors.grey[700],
+            child: Icon(
+              // Headset for the human receptionist, robot for the bot
+              isReceptionist ? Icons.headset_mic : Icons.smart_toy,
+              color: Color(0xFFe2001a),
             ),
+          ),
         ],
-      ),
-    );
-  }
+      ],
+    ),
+  );
+}
+
 
   Widget _buildInputArea() {
     return Center(
