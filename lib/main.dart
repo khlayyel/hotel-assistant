@@ -74,6 +74,7 @@ class ChatScreenState extends State<ChatScreen> {
   String? _receptionistName;
   Stream<QuerySnapshot>? _messagesStream;
   String? _resumeConversation;
+  List<String> _receptionistNames = [];
 
   @override
   void initState() {
@@ -251,6 +252,23 @@ class ChatScreenState extends State<ChatScreen> {
       await prefs.remove('clientHotelName');
       WidgetsBinding.instance.addPostFrameCallback((_) => _showClientInfoDialog());
     }
+
+    await _loadReceptionistNames();
+  }
+
+  Future<void> _loadReceptionistNames() async {
+    if (_selectedHotelId == null) return;
+    final snap = await FirebaseFirestore.instance
+        .collection('hotels')
+        .doc(_selectedHotelId)
+        .collection('receptionists')
+        .get();
+    setState(() {
+      _receptionistNames = snap.docs
+          .map((doc) => (doc.data()['name'] as String?) ?? '')
+          .where((name) => name.isNotEmpty)
+          .toList();
+    });
   }
 
   Future<void> _resetClientInfo() async {
@@ -958,7 +976,7 @@ Voici l'historique :
     bool isUser = message.isUser;
     bool isTemporary = message.isTemporary;
     String sender = message.senderName ?? (isUser ? "Client" : "Bot");
-    if (_isReceptionist && !isUser && message.senderName != null) sender = message.senderName!;
+    bool isReceptionist = _receptionistNames.contains(sender);
     
     if (isTemporary) {
       if (!_isReceptionist && message.senderName == "Bot") {
@@ -1017,13 +1035,11 @@ Voici l'historique :
         children: [
           if (!isUser)
             CircleAvatar(
-              backgroundColor: (message.senderName != null && message.senderName == _assignedReceptionistName)
+              backgroundColor: isReceptionist
                   ? Colors.grey[900]
                   : Colors.grey[700],
-              child: (message.senderName != null && message.senderName == _assignedReceptionistName)
-                  // Réceptionniste = casque
+              child: isReceptionist
                   ? Icon(Icons.headset_mic, color: Color(0xFFe2001a))
-                  // Bot = robot
                   : Icon(Icons.smart_toy, color: Color(0xFFe2001a)),
             ),
           if (!isUser) SizedBox(width: 10),
