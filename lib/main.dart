@@ -973,125 +973,86 @@ Voici l'historique :
   }
 
   Widget _buildMessage(ChatMessage message, int index) {
-    bool isUser = message.isUser;
-    bool isTemporary = message.isTemporary;
-    String sender = message.senderName ?? (isUser ? "Client" : "Bot");
-    bool isReceptionist = _receptionistNames.contains(sender);
-    
-    if (isTemporary) {
-      if (!_isReceptionist && message.senderName == "Bot") {
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              CircleAvatar(
-                backgroundColor: Colors.grey[700],
-                child: Icon(Icons.smart_toy, color: Colors.white),
-              ),
-              SizedBox(width: 10),
-              AnimatedDots(sender: "Bot"),
-            ],
-          ),
-        );
-      }
-      if (_isReceptionist) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              CircleAvatar(
-                backgroundColor: message.senderName == _assignedReceptionistName ? Colors.blueAccent : Colors.grey[700],
-                child: message.senderName == _assignedReceptionistName
-                  ? Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Icon(Icons.person, color: Colors.white, size: 24),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: Icon(Icons.headset_mic, color: Colors.orangeAccent, size: 16),
-                        ),
-                      ],
-                    )
-                  : Icon(Icons.person, color: Colors.white),
-              ),
-              SizedBox(width: 10),
-              AnimatedDots(sender: message.senderName ?? ''),
-            ],
-          ),
-        );
-      }
-      return SizedBox.shrink();
-    }
+  final isUser      = message.isUser;
+  final isTemporary = message.isTemporary;
+  final sender      = message.senderName ?? (isUser ? "Client" : "Bot");
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-      child: Row(
-        mainAxisAlignment: isUser
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
-        children: [
-          if (!isUser)
-            CircleAvatar(
-              backgroundColor: isReceptionist
-                  ? Colors.grey[900]
-                  : Colors.grey[700],
-              child: isReceptionist
-                  ? Icon(Icons.headset_mic, color: Color(0xFFe2001a))
-                  : Icon(Icons.smart_toy, color: Color(0xFFe2001a)),
-            ),
-          if (!isUser) SizedBox(width: 10),
-          Flexible(
-            child: Container(
-              padding: EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: isUser ? Color(0xFF2d2b31) : Colors.grey[850],
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: message.hasButtons
-                  ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (message.text.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 8.0),
-                            child: Text(message.text, style: TextStyle(color: Colors.white, fontSize: 16)),
-                          ),
-                        _buildEscalationButtons(),
-                      ],
-                    )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          message.senderName ?? (isUser ? "Moi" : "Bot"),
-                          style: TextStyle(color: Color(0xFFe2001a), fontWeight: FontWeight.bold, fontSize: 13),
-                        ),
-                        SizedBox(height: 2),
-                        Text(message.text, style: TextStyle(color: Colors.white, fontSize: 16)),
-                      ],
-                    ),
+  // true only when this sender matches the assigned receptionist
+  final isReceptionist = sender == _assignedReceptionistName;
+
+  if (isTemporary) {
+    // keep your existing “typing…” UI here
+    return /* … */;
+  }
+
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+    child: Row(
+      mainAxisAlignment:
+          isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+      children: [
+        // Left avatar for messages from receptionist or bot
+        if (!isUser) ...[
+          CircleAvatar(
+            backgroundColor:
+                isReceptionist ? Colors.grey[900] : Colors.grey[700],
+            child: Icon(
+              isReceptionist ? Icons.headset_mic : Icons.smart_toy,
+              color: Color(0xFFe2001a),
             ),
           ),
-          if (isUser) SizedBox(width: 10),
-          if (isUser)
-            CircleAvatar(
-              backgroundColor: Color(0xFFe2001a),
-              child: Icon(Icons.person, color: Colors.white),
-            ),
+          SizedBox(width: 10),
         ],
-      ),
-    );
-  }
+
+        // Message bubble
+        Flexible(
+          child: Container(
+            padding: EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: isUser ? Color(0xFF2d2b31) : Colors.grey[850],
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 4,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  sender,
+                  style: TextStyle(
+                    color: Color(0xFFe2001a),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  message.text,
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // Right avatar for client messages
+        if (isUser) ...[
+          SizedBox(width: 10),
+          CircleAvatar(
+            backgroundColor: Color(0xFFe2001a),
+            child: Icon(Icons.person, color: Colors.white),
+          ),
+        ],
+      ],
+    ),
+  );
+}
+
 
   Widget _buildInputArea() {
     return Center(
