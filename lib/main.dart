@@ -778,7 +778,6 @@ Voici l'historique :
             .collection('hotels')
             .doc(_selectedHotelId)
             .collection('receptionists')
-            .where('isAvailable', isEqualTo: true)
             .get();
 
         if (receptionistsSnap.docs.isEmpty) {
@@ -795,24 +794,27 @@ Voici l'historique :
         for (var doc in receptionistsSnap.docs) {
           final emailsList = doc['emails'] as List<dynamic>;
           final receptionistName = doc['name'] as String?;
-          if (receptionistName != null && receptionistName.isNotEmpty) {
+          if (receptionistName != null && receptionistName.isNotEmpty && emailsList.isNotEmpty) {
             final conversationLink = '${Environment.webAppUrl}/conversation/$_conversationId?role=receptionist&receptionistName=${Uri.encodeComponent(receptionistName)}';
-            
+            final List<String> emails = [];
             for (var emailObj in emailsList) {
               final email = emailObj['address'] as String?;
               if (email != null && email.isNotEmpty) {
-                await http.post(
-                  Uri.parse(Environment.apiBaseUrl + '/sendNotification'),
-                  headers: {'Content-Type': 'application/json'},
-                  body: jsonEncode({
-                    'title': 'Nouvelle conversation client',
-                    'body': 'Un client a besoin de votre assistance !\n\nRésumé de la conversation :\n$summary\n\nAccéder à la conversation : $conversationLink',
-                    'conversationId': _conversationId,
-                    'emails': [email],
-                    'conversationLink': conversationLink
-                  }),
-                );
+                emails.add(email);
               }
+            }
+            if (emails.isNotEmpty) {
+              await http.post(
+                Uri.parse(Environment.apiBaseUrl + '/sendNotification'),
+                headers: {'Content-Type': 'application/json'},
+                body: jsonEncode({
+                  'title': 'Nouvelle conversation client',
+                  'body': 'Un client a besoin de votre assistance !\n\nRésumé de la conversation :\n$summary\n\nAccéder à la conversation : $conversationLink',
+                  'conversationId': _conversationId,
+                  'emails': emails,
+                  'conversationLink': conversationLink
+                }),
+              );
             }
           }
         }
