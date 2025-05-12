@@ -1040,9 +1040,7 @@ Voici l'historique :
                   : Colors.grey[700],
               child: isReceptionist
                   ? Icon(Icons.headset_mic, color: Color(0xFFe2001a))
-                  : (sender == "Bot"
-                      ? Icon(Icons.smart_toy, color: Color(0xFFe2001a))
-                      : Icon(Icons.person, color: Color(0xFFe2001a))),
+                  : Icon(Icons.smart_toy, color: Color(0xFFe2001a)),
             ),
           if (!isUser) SizedBox(width: 10),
           Flexible(
