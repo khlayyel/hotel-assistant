@@ -114,45 +114,28 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
   }
 
   Widget _buildMessage(Map<String, dynamic> data) {
-    String sender = (data['senderName'] ?? '').toString();
-    bool isReceptionist = sender == widget.receptionistName;
-    bool isBot = sender == 'Bot';
-    bool alignRight = isReceptionist || isBot;
+    final sender    = (data['senderName'] ?? "").toString();
+    final text      = data['text'] ?? "";
+    final isMe      = sender == widget.receptionistName;
+    final isBot     = sender == "Bot";
+    final alignRight= isMe || isBot;
 
-  return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-    child: Row(
-      mainAxisAlignment:
-          alignRight ? MainAxisAlignment.end : MainAxisAlignment.start,
-      children: [
-        // Avatar on the left for the client
-        if (!alignRight) ...[
-          CircleAvatar(
-            backgroundColor: Colors.grey[700],
-            child: Icon(Icons.person, color: Colors.white),
-          ),
-          SizedBox(width: 10),
-        ],
-
-        // The message bubble
-        Flexible(
-          child: Container(
-            padding: EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: alignRight ? Color(0xFF2d2b31) : Colors.grey[850],
-              borderRadius: BorderRadius.circular(18),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
-                  blurRadius: 4,
-                  offset: Offset(0, 2),
-                ),
-              ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+      child: Row(
+        mainAxisAlignment: alignRight ? MainAxisAlignment.end : MainAxisAlignment.start,
+        children: [
+          if (!alignRight) ...[
+            CircleAvatar(
+              backgroundColor: Colors.grey[700],
+              child: Icon(Icons.person, color: Colors.white),
             ),
+            SizedBox(width: 10),
+          ],
+          Flexible(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: alignRight ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
-                // Sender name
                 Text(
                   sender,
                   style: TextStyle(
@@ -161,35 +144,39 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
                     fontSize: 13,
                   ),
                 ),
-                SizedBox(height: 2),
-                // Message text
-                Text(
-                  data['text'] ?? '',
-                  style: TextStyle(color: Colors.white, fontSize: 16),
+                Container(
+                  padding: EdgeInsets.all(14),
+                  margin: EdgeInsets.only(top: 4),
+                  decoration: BoxDecoration(
+                    color: alignRight ? Color(0xFF2d2b31) : Colors.grey[850],
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Text(text, style: TextStyle(color: Colors.white, fontSize: 16)),
                 ),
               ],
             ),
           ),
-        ),
-
-        // Avatar on the right for bot/receptionist
-        if (alignRight) ...[
-          SizedBox(width: 10),
-          CircleAvatar(
-            backgroundColor:
-                isReceptionist ? Colors.grey[900] : Colors.grey[700],
-            child: Icon(
-              // Headset for the human receptionist, robot for the bot
-              isReceptionist ? Icons.headset_mic : Icons.smart_toy,
-              color: Color(0xFFe2001a),
+          if (alignRight) ...[
+            SizedBox(width: 10),
+            CircleAvatar(
+              backgroundColor: isMe ? Colors.grey[900] : Colors.grey[700],
+              child: Icon(
+                isMe ? Icons.headset_mic : Icons.smart_toy,
+                color: Color(0xFFe2001a),
+              ),
             ),
-          ),
+          ],
         ],
-      ],
-    ),
-  );
-}
-
+      ),
+    );
+  }
 
   Widget _buildInputArea() {
     return Center(

@@ -536,7 +536,25 @@ class ChatScreenState extends State<ChatScreen> {
 
     // AJOUT : Si un réceptionniste est en charge, on ne fait plus jamais d'escalade ni de question métier
     if (_assignedReceptionistName != null) {
-      // Le bot ne doit plus répondre, ni proposer d'escalade
+      // Sauvegarde pour que le réceptionniste le voie
+      await FirebaseFirestore.instance
+          .collection('conversations')
+          .doc(_conversationId)
+          .collection('messages')
+          .add({
+        'text': userMessage,
+        'isUser': true,
+        'timestamp': FieldValue.serverTimestamp(),
+        'senderName': _receptionistName ?? 'Réceptionniste',
+      });
+      setState(() {
+        _messages.add(ChatMessage(
+          text: userMessage,
+          isUser: true,
+          senderName: _receptionistName ?? 'Réceptionniste',
+        ));
+      });
+      _scrollToBottom();
       return;
     }
 
@@ -973,13 +991,12 @@ Voici l'historique :
   }
 
   Widget _buildMessage(ChatMessage message, int index) {
-    final isUser        = message.isUser;
-  final isTemporary   = message.isTemporary;
-  final sender        = message.senderName ?? (isUser ? "Client" : "Bot");
-  final isReceptionist= sender == _assignedReceptionistName;
-  final isBot         = sender == 'Bot';
+    final isUser      = message.isUser;
+    final sender      = message.senderName ?? (isUser ? "Client" : "Bot");
+    final isReception = sender == _assignedReceptionistName;
+    final alignRight  = isUser;
 
-    if (isTemporary) {
+    if (message.isTemporary) {
       if (!_isReceptionist && message.senderName == "Bot") {
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
@@ -1003,20 +1020,12 @@ Voici l'historique :
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
               CircleAvatar(
-                backgroundColor: message.senderName == _assignedReceptionistName ? Colors.blueAccent : Colors.grey[700],
-                child: message.senderName == _assignedReceptionistName
-                  ? Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Icon(Icons.person, color: Colors.white, size: 24),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: Icon(Icons.headset_mic, color: Colors.orangeAccent, size: 16),
-                        ),
-                      ],
-                    )
-                  : Icon(Icons.person, color: Colors.white),
+                backgroundColor: isReception ? Colors.grey[900] : Colors.grey[700],
+                child: isReception
+                    ? Icon(Icons.headset_mic, color: Color(0xFFe2001a))
+                    : (isReception
+                        ? Icon(Icons.smart_toy, color: Color(0xFFe2001a))
+                        : Icon(Icons.person, color: Color(0xFFe2001a))),
               ),
               SizedBox(width: 10),
               AnimatedDots(sender: message.senderName ?? ''),
@@ -1028,110 +1037,82 @@ Voici l'historique :
     }
 
     // 2) Message permanent
-  return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-    child: Row(
-      mainAxisAlignment:
-          isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-      children: [
-        // Avatar à gauche pour bot/réceptionniste
-        if (!isUser) ...[
-          CircleAvatar(
-            backgroundColor:
-                isReceptionist ? Colors.grey[900] : Colors.grey[700],
-            child: Icon(
-              isReceptionist ? Icons.headset_mic : Icons.smart_toy,
-              color: Color(0xFFe2001a),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+      child: Row(
+        mainAxisAlignment: alignRight ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!alignRight) ...[
+            CircleAvatar(
+              backgroundColor: isReception ? Colors.grey[900] : Colors.grey[700],
+              child: isReception
+                  ? Icon(Icons.headset_mic, color: Color(0xFFe2001a))
+                  : (isReception
+                      ? Icon(Icons.smart_toy, color: Color(0xFFe2001a))
+                      : Icon(Icons.person, color: Color(0xFFe2001a))),
             ),
-          ),
-          SizedBox(width: 10),
-        ],
-
-        // Bulble content
-        Flexible(
-          child: Container(
-            padding: EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: isUser ? Color(0xFF2d2b31) : Colors.grey[850],
-              borderRadius: BorderRadius.circular(18),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
-                  blurRadius: 4,
-                  offset: Offset(0, 2),
+            SizedBox(width: 10),
+          ],
+          Flexible(
+            child: Column(
+              crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              children: [
+                Text(
+                  sender,
+                  style: TextStyle(
+                    color: Color(0xFFe2001a),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
                 ),
-              ],
-            ),
-            child: message.hasButtons
-              // 3) Si hasButtons => Oui/Non
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (message.text.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8.0),
-                        child: Text(
+                SizedBox(height: 2),
+                Container(
+                  padding: EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: alignRight ? Color(0xFF2d2b31) : Colors.grey[850],
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: message.hasButtons
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (message.text.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8.0),
+                                child: Text(
+                                  message.text,
+                                  style: TextStyle(color: Colors.white, fontSize: 16),
+                                ),
+                              ),
+                            _buildEscalationButtons(),
+                          ],
+                        )
+                      : Text(
                           message.text,
                           style: TextStyle(color: Colors.white, fontSize: 16),
                         ),
-                      ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        ElevatedButton(
-                          onPressed: () => _handleEscalationResponse("Oui"),
-                          child: Text("Oui"),
-                          style: ButtonStyle(
-                            backgroundColor: MaterialStateProperty.all(Colors.blueAccent),
-                            foregroundColor: MaterialStateProperty.all(Colors.white),
-                          ),
-                        ),
-                        SizedBox(width: 10),
-                        ElevatedButton(
-                          onPressed: () => _handleEscalationResponse("Non"),
-                          child: Text("Non"),
-                          style: ButtonStyle(
-                            backgroundColor: MaterialStateProperty.all(Colors.redAccent),
-                            foregroundColor: MaterialStateProperty.all(Colors.white),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                )
-              // 4) Sinon, bulle normale
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      sender,
-                      style: TextStyle(
-                        color: Color(0xFFe2001a),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      message.text,
-                      style: TextStyle(color: Colors.white, fontSize: 16),
-                    ),
-                  ],
                 ),
+              ],
+            ),
           ),
-        ),
-
-        // Avatar à droite pour le client
-        if (isUser) ...[
-          SizedBox(width: 10),
-          CircleAvatar(
-            backgroundColor: Color(0xFFe2001a),
-            child: Icon(Icons.person, color: Colors.white),
-          ),
+          if (alignRight) ...[
+            SizedBox(width: 10),
+            CircleAvatar(
+              backgroundColor: Color(0xFFe2001a),
+              child: Icon(Icons.person, color: Colors.white),
+            ),
+          ],
         ],
-      ],
-    ),
-  );
+      ),
+    );
   }
 
   Widget _buildInputArea() {
