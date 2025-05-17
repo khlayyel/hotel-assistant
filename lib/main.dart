@@ -587,7 +587,8 @@ class ChatScreenState extends State<ChatScreen> {
     }
 
     // === ENVOI DU MESSAGE PAR LE CLIENT ===
-    if (!_isReceptionist) {
+    if (!_isReceptionist && _assignedReceptionistName != null) {
+      // On enregistre le message pour le réceptionniste, mais le bot NE répond plus
       await FirebaseFirestore.instance
           .collection('conversations')
           .doc(_conversationId)
@@ -598,6 +599,15 @@ class ChatScreenState extends State<ChatScreen> {
         'timestamp': FieldValue.serverTimestamp(),
         'senderName': senderName,
       });
+      setState(() {
+        _messages.add(ChatMessage(
+          text: userMessage,
+          isUser: true,
+          senderName: senderName,
+        ));
+      });
+      _scrollToBottom();
+      return;
     }
 
     await _removeBotTypingMessage();
