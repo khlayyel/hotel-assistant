@@ -973,11 +973,11 @@ Voici l'historique :
   }
 
   Widget _buildMessage(ChatMessage message, int index) {
-    final isUser = message.isUser;
-    final isTemporary = message.isTemporary;
-    final sender = message.senderName ?? (isUser ? "Client" : "Bot");
-    // On garde une seule déclaration de isReceptionist
-    final isReceptionist = _receptionistNames.contains(sender) || sender == _assignedReceptionistName;
+    final isUser        = message.isUser;
+  final isTemporary   = message.isTemporary;
+  final sender        = message.senderName ?? (isUser ? "Client" : "Bot");
+  final isReceptionist= sender == _assignedReceptionistName;
+  final isBot         = sender == 'Bot';
 
     if (isTemporary) {
       if (!_isReceptionist && message.senderName == "Bot") {
@@ -1027,13 +1027,14 @@ Voici l'historique :
       return SizedBox.shrink();
     }
 
-    return Padding(
+    // 2) Message permanent
+  return Padding(
     padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
     child: Row(
       mainAxisAlignment:
           isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
       children: [
-        // Left avatar for messages from receptionist or bot
+        // Avatar à gauche pour bot/réceptionniste
         if (!isUser) ...[
           CircleAvatar(
             backgroundColor:
@@ -1046,7 +1047,7 @@ Voici l'historique :
           SizedBox(width: 10),
         ],
 
-        // Message bubble
+        // Bulble content
         Flexible(
           child: Container(
             padding: EdgeInsets.all(14),
@@ -1061,28 +1062,66 @@ Voici l'historique :
                 ),
               ],
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  sender,
-                  style: TextStyle(
-                    color: Color(0xFFe2001a),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
+            child: message.hasButtons
+              // 3) Si hasButtons => Oui/Non
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (message.text.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: Text(
+                          message.text,
+                          style: TextStyle(color: Colors.white, fontSize: 16),
+                        ),
+                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () => _handleEscalationResponse("Oui"),
+                          child: Text("Oui"),
+                          style: ButtonStyle(
+                            backgroundColor: MaterialStateProperty.all(Colors.blueAccent),
+                            foregroundColor: MaterialStateProperty.all(Colors.white),
+                          ),
+                        ),
+                        SizedBox(width: 10),
+                        ElevatedButton(
+                          onPressed: () => _handleEscalationResponse("Non"),
+                          child: Text("Non"),
+                          style: ButtonStyle(
+                            backgroundColor: MaterialStateProperty.all(Colors.redAccent),
+                            foregroundColor: MaterialStateProperty.all(Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                )
+              // 4) Sinon, bulle normale
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      sender,
+                      style: TextStyle(
+                        color: Color(0xFFe2001a),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      message.text,
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ],
                 ),
-                SizedBox(height: 2),
-                Text(
-                  message.text,
-                  style: TextStyle(color: Colors.white, fontSize: 16),
-                ),
-              ],
-            ),
           ),
         ),
 
-        // Right avatar for client messages
+        // Avatar à droite pour le client
         if (isUser) ...[
           SizedBox(width: 10),
           CircleAvatar(
