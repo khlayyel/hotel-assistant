@@ -973,19 +973,61 @@ Voici l'historique :
   }
 
   Widget _buildMessage(ChatMessage message, int index) {
-  final isUser      = message.isUser;
-  final isTemporary = message.isTemporary;
-  final sender      = message.senderName ?? (isUser ? "Client" : "Bot");
+    final isUser = message.isUser;
+    final isTemporary = message.isTemporary;
+    final sender = message.senderName ?? (isUser ? "Client" : "Bot");
+    // On garde une seule déclaration de isReceptionist
+    final isReceptionist = _receptionistNames.contains(sender) || sender == _assignedReceptionistName;
 
-  // true only when this sender matches the assigned receptionist
-  final isReceptionist = sender == _assignedReceptionistName;
+    if (isTemporary) {
+      if (!_isReceptionist && message.senderName == "Bot") {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                backgroundColor: Colors.grey[700],
+                child: Icon(Icons.smart_toy, color: Colors.white),
+              ),
+              SizedBox(width: 10),
+              AnimatedDots(sender: "Bot"),
+            ],
+          ),
+        );
+      }
+      if (_isReceptionist) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                backgroundColor: message.senderName == _assignedReceptionistName ? Colors.blueAccent : Colors.grey[700],
+                child: message.senderName == _assignedReceptionistName
+                  ? Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Icon(Icons.person, color: Colors.white, size: 24),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: Icon(Icons.headset_mic, color: Colors.orangeAccent, size: 16),
+                        ),
+                      ],
+                    )
+                  : Icon(Icons.person, color: Colors.white),
+              ),
+              SizedBox(width: 10),
+              AnimatedDots(sender: message.senderName ?? ''),
+            ],
+          ),
+        );
+      }
+      return SizedBox.shrink();
+    }
 
-  if (isTemporary) {
-    // keep your existing “typing…” UI here
-    return /* … */;
-  }
-
-  return Padding(
+    return Padding(
     padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
     child: Row(
       mainAxisAlignment:
@@ -1051,8 +1093,7 @@ Voici l'historique :
       ],
     ),
   );
-}
-
+  }
 
   Widget _buildInputArea() {
     return Center(
