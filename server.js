@@ -7,13 +7,17 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 const allowedOrigins = [
-  "http://localhost:3000"
+  "http://localhost:3000",
+  "https://assistant-i1ojs8h3k-khalils-projects-014efdbb.vercel.app"
 ];
 
 app.use(cors({
   origin: function(origin, callback) {
     if (!origin) return callback(null, true);
-    if (origin.endsWith('.vercel.app') || allowedOrigins.includes(origin)) {
+    if (
+      allowedOrigins.includes(origin) ||
+      origin.endsWith('.vercel.app')
+    ) {
       return callback(null, true);
     }
     callback(new Error('Not allowed by CORS'));
