@@ -523,20 +523,9 @@ class ChatScreenState extends State<ChatScreen> {
     _controller.clear();
     print('Message utilisateur : $userMessage');
 
-    // Bloquer le bot si un réceptionniste est en charge
-    if (_isConversationEscalated && _assignedReceptionistName != null && !_isReceptionist) {
-      setState(() {
-        _messages.add(ChatMessage(
-          text: "Un réceptionniste est en charge de cette conversation. Veuillez attendre sa réponse.",
-          isUser: false,
-        ));
-      });
-      return;
-    }
-
-    // AJOUT : Si un réceptionniste est en charge, on ne fait plus jamais d'escalade ni de question métier
-    if (_assignedReceptionistName != null) {
-      // Sauvegarde pour que le réceptionniste le voie
+    // Bloquer le bot si un réceptionniste est en charge (pour le client)
+    if (!_isReceptionist && _assignedReceptionistName != null) {
+      // On enregistre juste le message du client, aucune logique bot
       await FirebaseFirestore.instance
           .collection('conversations')
           .doc(_conversationId)
@@ -545,22 +534,18 @@ class ChatScreenState extends State<ChatScreen> {
         'text': userMessage,
         'isUser': true,
         'timestamp': FieldValue.serverTimestamp(),
-        'senderName': _receptionistName ?? 'Réceptionniste',
+        'senderName': (_clientPrenom != null && _clientNom != null) ? '$_clientPrenom $_clientNom' : 'Client',
       });
       setState(() {
         _messages.add(ChatMessage(
           text: userMessage,
           isUser: true,
-          senderName: _receptionistName ?? 'Réceptionniste',
+          senderName: (_clientPrenom != null && _clientNom != null) ? '$_clientPrenom $_clientNom' : 'Client',
         ));
       });
       _scrollToBottom();
-      return;
+      return; // On arrête ici, le bot ne répond pas
     }
-
-    String senderName = _isReceptionist
-      ? (_receptionistName ?? 'Réceptionniste')
-      : ((_clientPrenom != null && _clientNom != null) ? '$_clientPrenom $_clientNom' : 'Client');
 
     // === ENVOI DU MESSAGE PAR LE RÉCEPTIONNISTE ===
     if (_isReceptionist) {
@@ -586,7 +571,7 @@ class ChatScreenState extends State<ChatScreen> {
       return;
     }
 
-    // === ENVOI DU MESSAGE PAR LE CLIENT ===
+    // === ENVOI DU MESSAGE PAR LE CLIENT (quand PAS de réceptionniste assigné) ===
     if (!_isReceptionist) {
       await FirebaseFirestore.instance
           .collection('conversations')
@@ -596,14 +581,14 @@ class ChatScreenState extends State<ChatScreen> {
         'text': userMessage,
         'isUser': true,
         'timestamp': FieldValue.serverTimestamp(),
-        'senderName': senderName,
+        'senderName': (_clientPrenom != null && _clientNom != null) ? '$_clientPrenom $_clientNom' : 'Client',
       });
     }
 
     await _removeBotTypingMessage();
 
     setState(() {
-      _messages.add(ChatMessage(text: userMessage, isUser: true, senderName: senderName));
+      _messages.add(ChatMessage(text: userMessage, isUser: true, senderName: (_clientPrenom != null && _clientNom != null) ? '$_clientPrenom $_clientNom' : 'Client'));
       _isTyping = true;
       _messages.add(ChatMessage(text: "Bot est en train d'écrire.", isUser: false, isTemporary: true));
     });
