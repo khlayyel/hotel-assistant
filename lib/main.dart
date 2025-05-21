@@ -37,7 +37,7 @@ class HotelChatbotApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Hotel Assistant Chatbot',
+      title: 'Système de Chat Intelligent pour Hôtels',
       theme: ThemeData.dark(),
       home: ChatScreen(),
     );
