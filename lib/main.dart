@@ -13,6 +13,7 @@ import 'package:dropdown_search/dropdown_search.dart';
 import 'config/environment.dart';
 import 'dart:html' as html;
 import 'screens/receptionist_screen.dart';
+import 'screens/choose_role_screen.dart';
 
 void main() async{
     WidgetsFlutterBinding.ensureInitialized();
@@ -39,7 +40,7 @@ class HotelChatbotApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Système de Chat Intelligent pour Hôtels',
       theme: ThemeData.dark(),
-      home: ChatScreen(),
+      home: ChooseRoleScreen(),
     );
   }
 }
@@ -725,13 +726,6 @@ class ChatScreenState extends State<ChatScreen> {
     });
     _scrollToBottom();
     _focusNode.requestFocus();
-
-    // Affichage du bouton gestion si le message est "gestion"
-    if (userMessage.toLowerCase() == "gestion") {
-      setState(() {
-        _showGestionButton = true;
-      });
-    }
   }
 
   void _handleEscalationResponse(String response) async {
@@ -1149,18 +1143,6 @@ Voici l'historique :
     );
   }
 
-  void _navigateToGestionHotels() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => GestionHotelsScreen()),
-    ).then((_) {
-      // Après retour de l'écran de gestion
-      setState(() {
-        _showGestionButton = false;
-      });
-    });
-  }
-
   Widget _buildEscalationBadge() {
     if (_isConversationEscalated && _assignedReceptionistName != null) {
       return Container(
@@ -1304,19 +1286,6 @@ Voici l'historique :
                   ),
                 ),
                 _buildInputArea(),
-                if (_showGestionButton)
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: ElevatedButton(
-                      onPressed: _navigateToGestionHotels,
-                      child: Text("Gestion Hotels et Receptionnistes"),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFFe2001a),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                      ),
-                    ),
-                  ),
                 SizedBox(height: 20),
               ],
             ),
