@@ -18,7 +18,7 @@ class ChooseRoleScreen extends StatelessWidget {
                 onPressed: () {
                   Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(builder: (context) => HotelChatbotApp()),
+                    MaterialPageRoute(builder: (context) => ChatScreen()),
                   );
                 },
                 child: Text("Se connecter en tant que client"),

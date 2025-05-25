@@ -24,15 +24,19 @@ class _LoginAdminScreenState extends State<LoginAdminScreen> {
     }
 
     try {
-      final doc = await FirebaseFirestore.instance.collection('admins').doc(username).get();
-      if (doc.exists && doc.data()?['username'] == username && doc.data()?['password'] == password) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => GestionHotelsScreen()),
-        );
-      } else {
-        setState(() { _error = "Identifiants incorrects."; });
+      final query = await FirebaseFirestore.instance.collection('admins').where('username', isEqualTo: username).get();
+      if (query.docs.isNotEmpty) {
+        final adminDoc = query.docs.first;
+        if (adminDoc.data()['password'] == password) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => GestionHotelsScreen()),
+          );
+          setState(() { _loading = false; });
+          return;
+        }
       }
+      setState(() { _error = "Identifiants incorrects."; });
     } catch (e) {
       setState(() { _error = "Erreur de connexion."; });
     }
