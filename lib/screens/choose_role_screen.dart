@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'login_admin_screen.dart';
 import '../main.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ChooseRoleScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    print('ChooseRoleScreen build appelé');
     return Scaffold(
       body: Center(
         child: ConstrainedBox(
@@ -15,8 +17,14 @@ class ChooseRoleScreen extends StatelessWidget {
               Text("Bienvenue !", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
               SizedBox(height: 40),
               ElevatedButton(
-                onPressed: () {
-                  Navigator.pushReplacement(
+                onPressed: () async {
+                  // Vider les infos client pour forcer la saisie à chaque fois
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.remove('clientNom');
+                  await prefs.remove('clientPrenom');
+                  await prefs.remove('clientHotelId');
+                  await prefs.remove('clientHotelName');
+                  Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => ChatScreen()),
                   );

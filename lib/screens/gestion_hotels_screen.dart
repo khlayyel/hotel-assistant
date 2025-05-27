@@ -723,6 +723,15 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> {
       appBar: AppBar(
         title: Text('Gestion des Hôtels'),
         backgroundColor: Colors.blueAccent,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => ChooseRoleScreen()),
+            );
+          },
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

@@ -4,33 +4,42 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'firebase_options.dart';  // Import the Firebase options file
+import 'firebase_options.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/services.dart' show rootBundle;
-import 'screens/gestion_hotels_screen.dart'; // Nouvel import
+import 'screens/gestion_hotels_screen.dart';
 import 'package:dropdown_search/dropdown_search.dart';
 import 'config/environment.dart';
-import 'dart:html' as html;
 import 'screens/receptionist_screen.dart';
 import 'screens/choose_role_screen.dart';
+import 'config/platform_config.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-void main() async{
-    WidgetsFlutterBinding.ensureInitialized();
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  try {
     await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform, // Use the generated options
+      options: DefaultFirebaseOptions.currentPlatform,
     );
-    if (kIsWeb) {
-      FirebaseMessaging messaging = FirebaseMessaging.instance;
-      messaging.requestPermission().then((_) {
-        messaging.getToken().then((token) {
-          print("FCM Token: $token");
-        }).catchError((e) {
-          print("Error getting FCM token: $e");
-        });
-      });
-    }    runApp(HotelChatbotApp());
+  } catch (e) {
+    print('Firebase déjà initialisé: $e');
   }
+
+  if (kIsWeb) {
+    FirebaseMessaging messaging = FirebaseMessaging.instance;
+    messaging.requestPermission().then((_) {
+      messaging.getToken().then((token) {
+        print("FCM Token: $token");
+      }).catchError((e) {
+        print("Error getting FCM token: $e");
+      });
+    });
+  }
+  
+  runApp(HotelChatbotApp());
+}
 
 
 class HotelChatbotApp extends StatelessWidget {
@@ -46,6 +55,9 @@ class HotelChatbotApp extends StatelessWidget {
 }
 
 class ChatScreen extends StatefulWidget {
+  ChatScreen() {
+    print('ChatScreen CONSTRUCTEUR appelé');
+  }
   @override
   State createState() => ChatScreenState();
 }
@@ -126,17 +138,6 @@ class ChatScreenState extends State<ChatScreen> {
       _loadClientInfo();
       _hotelSearchController.addListener(_onHotelInputChanged);
     }
-
-    if (kIsWeb) {
-      html.window.onBeforeUnload.listen((event) async {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.remove('clientNom');
-        await prefs.remove('clientPrenom');
-        await prefs.remove('clientHotelId');
-        await prefs.remove('clientHotelName');
-        await prefs.remove('conversationId');
-      });
-    }
   }
 
   Future<void> _loadConversationMessages(String conversationId) async {
@@ -201,7 +202,7 @@ class ChatScreenState extends State<ChatScreen> {
             content: Text('Cette conversation est déjà prise en charge par ${doc.data()?['assignedReceptionist']['name']}.'),
             actions: [
               ElevatedButton(
-                onPressed: () => html.window.location.href = Environment.webAppUrl,
+                onPressed: () => PlatformConfig.navigateToUrl(Environment.webAppUrl, context),
                 child: Text('Retour'),
               ),
             ],
@@ -244,14 +245,27 @@ class ChatScreenState extends State<ChatScreen> {
       _selectedHotelName = prefs.getString('clientHotelName');
     });
     
+    // Vérification plus stricte des informations client
     if (_clientNom == null || _clientNom!.isEmpty || 
         _clientPrenom == null || _clientPrenom!.isEmpty || 
-        _selectedHotelId == null || _selectedHotelId!.isEmpty) {
+        _selectedHotelId == null || _selectedHotelId!.isEmpty ||
+        _selectedHotelName == null || _selectedHotelName!.isEmpty) {
+      // Nettoyer toutes les données de session
       await prefs.remove('clientNom');
       await prefs.remove('clientPrenom');
       await prefs.remove('clientHotelId');
       await prefs.remove('clientHotelName');
-      WidgetsBinding.instance.addPostFrameCallback((_) => _showClientInfoDialog());
+      setState(() {
+        _clientNom = null;
+        _clientPrenom = null;
+        _selectedHotelId = null;
+        _selectedHotelName = null;
+      });
+      // Afficher le dialogue de saisie client (et non plus de navigation)
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showClientInfoDialog();
+      });
+      return;
     }
 
     await _loadReceptionistNames();
@@ -290,6 +304,7 @@ class ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _showClientInfoDialog() async {
+    print('_showClientInfoDialog appelé');
     final nomController = TextEditingController();
     final prenomController = TextEditingController();
     final hotelSearchController = TextEditingController();
@@ -1170,129 +1185,65 @@ Voici l'historique :
 
   @override
   Widget build(BuildContext context) {
-    if (_isReceptionist && _conversationId != null) {
+    print('ChatScreen build appelé');
+    // NE PAS faire de return ChooseRoleScreen ici !
+    // Si les infos ne sont pas encore chargées, affiche un loader
+    if (_clientNom == null || _clientPrenom == null || _selectedHotelId == null || _selectedHotelName == null) {
       return Scaffold(
-        appBar: AppBar(
-          title: Text("Hotel Chatbot Assistant (Réceptionniste)"),
-          actions: [
-            IconButton(
-              icon: Icon(Icons.settings),
-              onPressed: _resetClientInfo,
-              tooltip: 'Réinitialiser les informations client',
-            ),
-          ],
-        ),
-        body: Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: 700),
-            child: Column(
-              children: [
-                if (_isConversationEscalated && _assignedReceptionistName != null)
-                  _buildEscalationBadge(),
-                Expanded(
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream: _messagesStream,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return Center(child: CircularProgressIndicator());
-                      }
-                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                        return ListView(
-                          controller: _scrollController,
-                          children: [],
-                        );
-                      }
-                      final docs = snapshot.data!.docs;
-                      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
-                      return ListView.builder(
-                        controller: _scrollController,
-                        reverse: false,
-                        itemCount: docs.length,
-                        itemBuilder: (context, index) {
-                          final doc = docs[index];
-                          final data = doc.data() as Map<String, dynamic>;
-                          return _buildMessage(ChatMessage(
-                            text: data['text'],
-                            isUser: data['isUser'],
-                            senderName: data['senderName'],
-                            hasButtons: data['hasButtons'] == true,
-                            isTemporary: data['isTemporary'] == true,
-                            isTyping: data['isTyping'] == true,
-                          ), index);
-                        },
-                      );
-                    },
-                  ),
-                ),
-                _buildInputArea(),
-                SizedBox(height: 20),
-              ],
-            ),
-          ),
-        ),
-      );
-    } else {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text("Hotel Chatbot Assistant"),
-          actions: [
-            IconButton(
-              icon: Icon(Icons.settings),
-              onPressed: _resetClientInfo,
-              tooltip: 'Réinitialiser les informations client',
-            ),
-          ],
-        ),
-        body: Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: 700),
-            child: Column(
-              children: [
-                if (_isConversationEscalated && _assignedReceptionistName != null)
-                  _buildEscalationBadge(),
-                Expanded(
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream: _messagesStream,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return Center(child: CircularProgressIndicator());
-                      }
-                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                        return ListView(
-                          controller: _scrollController,
-                          children: [],
-                        );
-                      }
-                      final docs = snapshot.data!.docs;
-                      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
-                      return ListView.builder(
-                        controller: _scrollController,
-                        reverse: false,
-                        itemCount: docs.length,
-                        itemBuilder: (context, index) {
-                          final doc = docs[index];
-                          final data = doc.data() as Map<String, dynamic>;
-                          return _buildMessage(ChatMessage(
-                            text: data['text'],
-                            isUser: data['isUser'],
-                            senderName: data['senderName'],
-                            hasButtons: data['hasButtons'] == true,
-                            isTemporary: data['isTemporary'] == true,
-                            isTyping: data['isTyping'] == true,
-                          ), index);
-                        },
-                      );
-                    },
-                  ),
-                ),
-                _buildInputArea(),
-                SizedBox(height: 20),
-              ],
-            ),
-          ),
-        ),
+        body: Center(child: CircularProgressIndicator()),
       );
     }
+    // Sinon, affiche l'UI du chat normalement
+    return Scaffold(
+      appBar: AppBar(title: Text("Chat Assistant")),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: 700),
+          child: Column(
+            children: [
+              _buildEscalationBadge(),
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: _messagesStream,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Center(child: CircularProgressIndicator());
+                    }
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      return ListView(
+                        controller: _scrollController,
+                        children: [],
+                      );
+                    }
+                    final docs = snapshot.data!.docs;
+                    // Ajout du scroll automatique après chaque build de la liste
+                    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+                    return ListView.builder(
+                      controller: _scrollController,
+                      reverse: false,
+                      itemCount: docs.length,
+                      itemBuilder: (context, index) {
+                        final doc = docs[index];
+                        final data = doc.data() as Map<String, dynamic>;
+                        final message = ChatMessage(
+                          text: data['text'] ?? "",
+                          isUser: data['isUser'] ?? false,
+                          senderName: data['senderName'],
+                          hasButtons: data['hasButtons'] ?? false,
+                        );
+                        return _buildMessage(message, index);
+                      },
+                    );
+                  },
+                ),
+              ),
+              _buildInputArea(),
+              SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -1328,7 +1279,7 @@ Voici l'historique :
         content: Text(message),
         actions: [
           ElevatedButton(
-            onPressed: () => html.window.location.href = Environment.webAppUrl,
+            onPressed: () => PlatformConfig.navigateToUrl(Environment.webAppUrl, context),
             child: Text('Retour'),
           ),
         ],
@@ -1461,5 +1412,15 @@ class _AnimatedDotsState extends State<AnimatedDots> with SingleTickerProviderSt
         return Text('${widget.sender} est en train d\'écrire$dots', style: TextStyle(color: Colors.white, fontSize: 16));
       },
     );
+  }
+}
+
+// Remplacer la fonction navigateToUrl par :
+void navigateToUrl(String url) async {
+  final Uri uri = Uri.parse(url);
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri);
+  } else {
+    throw 'Impossible d\'ouvrir $url';
   }
 }

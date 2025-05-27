@@ -85,6 +85,8 @@ app.post('/api/sendNotification', async (req, res) => {
       }
     });
     for (const email of emails) {
+      console.log(`[${new Date().toISOString()}] Début envoi mail à ${email}`);
+      const start = Date.now();
       await transporter.sendMail({
         from: process.env.EMAIL_USER,
         to: email,
@@ -95,6 +97,8 @@ app.post('/api/sendNotification', async (req, res) => {
           <a href="${conversationLink}" style="display:inline-block;padding:12px 24px;background:#1976d2;color:#fff;text-decoration:none;border-radius:6px;margin-top:16px;font-weight:bold;">Accéder à la conversation</a>
         </div>`
       });
+      const end = Date.now();
+      console.log(`[${new Date().toISOString()}] Mail envoyé à ${email} en ${end - start} ms`);
     }
     res.json({ success: true, sent: emails.length });
   } catch (error) {

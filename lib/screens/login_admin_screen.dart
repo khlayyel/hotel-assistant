@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'gestion_hotels_screen.dart';
+import 'choose_role_screen.dart';
 
 class LoginAdminScreen extends StatefulWidget {
   @override
@@ -46,7 +47,18 @@ class _LoginAdminScreenState extends State<LoginAdminScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Connexion Admin")),
+      appBar: AppBar(
+        title: Text("Connexion Admin"),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => ChooseRoleScreen()),
+            );
+          },
+        ),
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: 400),

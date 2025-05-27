@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'dart:html' as html;
+import 'package:flutter/foundation.dart';
 import '../config/environment.dart';
+import '../config/platform_config.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ReceptionistScreen extends StatefulWidget {
   final String conversationId;
@@ -259,9 +262,19 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
         title: Text("Conversation avec le client"),
         actions: [
           IconButton(
-            icon: Icon(Icons.settings),
-            onPressed: () => html.window.location.href = Environment.webAppUrl,
-            tooltip: 'Retour à l\'accueil',
+            icon: const Icon(Icons.logout),
+            onPressed: () {
+              // Nettoyer les données de session
+              SharedPreferences.getInstance().then((prefs) {
+                prefs.remove('clientNom');
+                prefs.remove('clientPrenom');
+                prefs.remove('clientHotelId');
+                prefs.remove('clientHotelName');
+              });
+              // Rediriger vers la page de connexion
+              PlatformConfig.navigateToUrl(Environment.webAppUrl, context);
+            },
+            tooltip: 'Déconnexion',
           ),
         ],
       ),
@@ -319,5 +332,15 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
           'assignedReceptionist': null,
           'isEscalated': false
         });
+  }
+}
+
+// Remplacer la fonction navigateToUrl par :
+void navigateToUrl(String url) async {
+  final Uri uri = Uri.parse(url);
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri);
+  } else {
+    throw 'Impossible d\'ouvrir $url';
   }
 } 
