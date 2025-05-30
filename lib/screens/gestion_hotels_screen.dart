@@ -11,6 +11,7 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> {
   final TextEditingController _hotelController = TextEditingController();
   final TextEditingController _receptionistEmailController = TextEditingController();
   final TextEditingController _receptionistNameController = TextEditingController();
+  final TextEditingController _receptionistPasswordController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String? _selectedHotelId;
@@ -34,6 +35,9 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> {
   void dispose() {
     _searchController.dispose();
     _hotelController.dispose();
+    _receptionistEmailController.dispose();
+    _receptionistNameController.dispose();
+    _receptionistPasswordController.dispose();
     super.dispose();
   }
 
@@ -210,6 +214,8 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> {
     }
     final name = _receptionistNameController.text.trim();
     final email = _receptionistEmailController.text.trim();
+    final password = _receptionistPasswordController.text.trim();
+    
     if (name.isEmpty) {
       print('❌ Nom du réceptionniste manquant');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -224,6 +230,14 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> {
       );
       return;
     }
+    if (password.isEmpty || password.length < 6) {
+      print('❌ Mot de passe invalide');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Le mot de passe doit contenir au moins 6 caractères')),
+      );
+      return;
+    }
+
     print('Début de l\'ajout du réceptionniste - Nom: $name, Email: $email');
     try {
       final docRef = await _firestore
@@ -232,6 +246,7 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> {
           .collection('receptionists')
           .add({
         'name': name,
+        'password': password,
         'emails': [
           {
             'address': email,
@@ -244,6 +259,7 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> {
       await _loadReceptionists();
       _receptionistNameController.clear();
       _receptionistEmailController.clear();
+      _receptionistPasswordController.clear();
       setState(() {
         _showAddReceptionistForm = false;
       });
@@ -498,6 +514,8 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> {
   Future<void> _editReceptionist(Map<String, dynamic> receptionist) async {
     print('Début de la modification du réceptionniste: ${receptionist['name']}');
     final TextEditingController nameController = TextEditingController(text: receptionist['name']);
+    final TextEditingController passwordController = TextEditingController(text: receptionist['password'] ?? '');
+    
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -512,6 +530,15 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> {
                 border: OutlineInputBorder(),
               ),
             ),
+            SizedBox(height: 16),
+            TextField(
+              controller: passwordController,
+              decoration: InputDecoration(
+                labelText: 'Mot de passe',
+                border: OutlineInputBorder(),
+              ),
+              obscureText: true,
+            ),
           ],
         ),
         actions: [
@@ -522,7 +549,16 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> {
           ElevatedButton(
             onPressed: () async {
               final newName = nameController.text.trim();
+              final newPassword = passwordController.text.trim();
+              
               if (newName.isEmpty) return;
+              if (newPassword.isEmpty || newPassword.length < 6) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Le mot de passe doit contenir au moins 6 caractères')),
+                );
+                return;
+              }
+              
               try {
                 await _firestore
                     .collection('hotels')
@@ -531,6 +567,7 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> {
                     .doc(receptionist['id'])
                     .update({
                   'name': newName,
+                  'password': newPassword,
                 });
                 print('✅ Réceptionniste modifié avec succès: $newName');
                 await _loadReceptionists();
@@ -901,6 +938,16 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> {
                                   keyboardType: TextInputType.emailAddress,
                                 ),
                                 SizedBox(height: 8),
+                                TextField(
+                                  controller: _receptionistPasswordController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Mot de passe (minimum 6 caractères)',
+                                    border: OutlineInputBorder(),
+                                    prefixIcon: Icon(Icons.lock),
+                                  ),
+                                  obscureText: true,
+                                ),
+                                SizedBox(height: 8),
                                 ElevatedButton.icon(
                                   onPressed: _addReceptionist,
                                   icon: Icon(Icons.check),
@@ -913,6 +960,7 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> {
                                       _showAddReceptionistForm = false;
                                       _receptionistNameController.clear();
                                       _receptionistEmailController.clear();
+                                      _receptionistPasswordController.clear();
                                     });
                                   },
                                   child: Text('Annuler'),
