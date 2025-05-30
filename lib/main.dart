@@ -45,32 +45,47 @@ void main() async {
 class HotelChatbotApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    print('DEBUG: HotelChatbotApp build appelé');
-    Widget initialScreen = ChooseRoleScreen();
+    print('DEBUG HotelChatbotApp: build appelé');
+    Widget initialScreen = ChooseRoleScreen(); // Écran par défaut
+    String debugReason = 'Default: ChooseRoleScreen';
+
     if (kIsWeb) {
       final uri = Uri.base;
-      print('DEBUG: URI de base sur le web: ${uri.toString()}');
+      print('DEBUG HotelChatbotApp: URI de base sur le web: ${uri.toString()}');
       final conversationIdFromUrl = uri.pathSegments.length >= 2 && uri.pathSegments[0] == 'conversation'
           ? uri.pathSegments[1]
           : null;
       final role = uri.queryParameters['role'];
       String? receptionistName = uri.queryParameters['receptionistName'];
-      print('DEBUG: Paramètres détectés - role: $role, conversationId: $conversationIdFromUrl, receptionistName: $receptionistName');
+
+      print('DEBUG HotelChatbotApp: Paramètres détectés - role: $role, conversationId: $conversationIdFromUrl, receptionistName: $receptionistName');
+
+      // Logique principale pour le routage réceptionniste sur le web
       if (role == 'receptionist' && conversationIdFromUrl != null && conversationIdFromUrl.isNotEmpty && receptionistName != null && receptionistName.isNotEmpty) {
-        print('DEBUG: Rôle réceptionniste détecté avec paramètres valides. Routage vers authentification.');
+        print('DEBUG HotelChatbotApp: Rôle réceptionniste détecté avec paramètres valides.');
         initialScreen = ReceptionistAuthScreen(
           conversationId: conversationIdFromUrl,
           receptionistName: receptionistName,
         );
+        debugReason = 'Receptionist: ReceptionistAuthScreen';
+        print('DEBUG HotelChatbotApp: initialScreen set to ReceptionistAuthScreen');
       } else {
-        print('DEBUG: Rôle réceptionniste NON détecté ou paramètres manquants/invalides. Routage initial normal (ChooseRoleScreen ou autre).');
+         print('DEBUG HotelChatbotApp: Rôle réceptionniste NON détecté ou paramètres manquants/invalides.');
+         debugReason = 'Client/Other: ChooseRoleScreen';
+         print('DEBUG HotelChatbotApp: initialScreen remains ChooseRoleScreen');
       }
+    } else {
+      print('DEBUG HotelChatbotApp: Non web, initialScreen remains ChooseRoleScreen');
+      debugReason = 'Mobile: ChooseRoleScreen';
     }
+
+    print('DEBUG HotelChatbotApp: Final initialScreen type: ${initialScreen.runtimeType} (Reason: $debugReason)');
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Système de Chat Intelligent pour Hôtels',
       theme: ThemeData.dark(),
-      home: initialScreen,
+      home: initialScreen, // Utilisation de l'écran déterminé
     );
   }
 }
@@ -119,8 +134,7 @@ class ChatScreenState extends State<ChatScreen> {
       final conversationIdFromUrl = uri.pathSegments.length >= 2 && uri.pathSegments[0] == 'conversation'
           ? uri.pathSegments[1]
           : null;
-      final role = uri.queryParameters['role'];
-      if (role != 'receptionist' && conversationIdFromUrl != null && conversationIdFromUrl.isNotEmpty) {
+      if (conversationIdFromUrl != null && conversationIdFromUrl.isNotEmpty) {
         setState(() {
           _conversationId = conversationIdFromUrl;
           _showWelcomeMessage = false;
@@ -130,11 +144,8 @@ class ChatScreenState extends State<ChatScreen> {
       }
     }
 
-    // 2. Ensuite, charger les infos client SEULEMENT si ce n'est PAS un réceptionniste
-    if (!_isReceptionist) {
-      _loadClientInfo();
-      _hotelSearchController.addListener(_onHotelInputChanged);
-    }
+    _loadClientInfo();
+    _hotelSearchController.addListener(_onHotelInputChanged);
   }
 
   Future<void> _loadConversationMessages(String conversationId) async {
@@ -1183,9 +1194,11 @@ Voici l'historique :
   @override
   Widget build(BuildContext context) {
     print('ChatScreen build appelé');
-    // NE PAS faire de return ChooseRoleScreen ici !
-    // Si les infos ne sont pas encore chargées, affiche un loader
+    // Si les infos client ne sont pas chargées, affiche un loader (ou navigue, mais le loader est plus simple pour debug)
     if (_clientNom == null || _clientPrenom == null || _selectedHotelId == null || _selectedHotelName == null) {
+      if (_conversationId != null) {
+        print('DEBUG ChatScreen: ConversationId présent mais infos client absentes. Affichage du loader.');
+      }
       return Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
