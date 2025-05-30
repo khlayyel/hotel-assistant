@@ -42,15 +42,29 @@ void main() async {
   runApp(HotelChatbotApp());
 }
 
-
 class HotelChatbotApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    Widget initialScreen = ChooseRoleScreen();
+    if (kIsWeb) {
+      final uri = Uri.base;
+      final conversationIdFromUrl = uri.pathSegments.length >= 2 && uri.pathSegments[0] == 'conversation'
+          ? uri.pathSegments[1]
+          : null;
+      final role = uri.queryParameters['role'];
+      String? receptionistName = uri.queryParameters['receptionistName'];
+      if (role == 'receptionist' && conversationIdFromUrl != null && conversationIdFromUrl.isNotEmpty && receptionistName != null && receptionistName.isNotEmpty) {
+        initialScreen = ReceptionistAuthScreen(
+          conversationId: conversationIdFromUrl,
+          receptionistName: receptionistName,
+        );
+      }
+    }
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Système de Chat Intelligent pour Hôtels',
       theme: ThemeData.dark(),
-      home: ChooseRoleScreen(),
+      home: initialScreen,
     );
   }
 }
