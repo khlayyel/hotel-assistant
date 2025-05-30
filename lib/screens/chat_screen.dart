@@ -43,6 +43,19 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Sécurité supplémentaire : forcer l'authentification réceptionniste si besoin
+    if (Uri.base.queryParameters['role'] == 'receptionist') {
+      final conversationId = Uri.base.pathSegments.length >= 2 && Uri.base.pathSegments[0] == 'conversation'
+          ? Uri.base.pathSegments[1]
+          : null;
+      final receptionistName = Uri.base.queryParameters['receptionistName'];
+      if (conversationId != null && receptionistName != null && receptionistName.isNotEmpty) {
+        return ReceptionistAuthScreen(
+          conversationId: conversationId,
+          receptionistName: receptionistName,
+        );
+      }
+    }
     // ... (existing code)
   }
 } 

@@ -44,7 +44,7 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
 
       if (receptionistQuery.docs.isEmpty) {
         setState(() {
-          _error = "Réceptionniste non trouvé";
+          _error = "Réceptionniste non trouvé ou lien invalide";
           _isLoading = false;
         });
         return;
@@ -52,6 +52,15 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
 
       final receptionistDoc = receptionistQuery.docs.first;
       final receptionistData = receptionistDoc.data();
+
+      // Vérifier que le nom du réceptionniste dans la base correspond exactement à celui du lien
+      if (receptionistData['name'] != widget.receptionistName) {
+        setState(() {
+          _error = "Ce lien est réservé à ${widget.receptionistName}. Veuillez utiliser vos propres identifiants.";
+          _isLoading = false;
+        });
+        return;
+      }
 
       if (receptionistData['password'] != _passwordController.text) {
         setState(() {
