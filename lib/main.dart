@@ -114,30 +114,7 @@ class ChatScreenState extends State<ChatScreen> {
           ? uri.pathSegments[1]
           : null;
       final role = uri.queryParameters['role'];
-      String? receptionistName = uri.queryParameters['receptionistName'];
-      
-      if (role == 'receptionist') {
-        if (receptionistName == null || receptionistName == 'null' || receptionistName.isEmpty) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _showErrorDialog("Le nom du réceptionniste doit être fourni dans l'URL (receptionistName).");
-          });
-          return;
-        }
-        if (conversationIdFromUrl != null && conversationIdFromUrl.isNotEmpty) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ReceptionistAuthScreen(
-                conversationId: conversationIdFromUrl,
-                receptionistName: receptionistName,
-              ),
-            ),
-          );
-          return;
-        }
-      }
-      
-      if (conversationIdFromUrl != null && conversationIdFromUrl.isNotEmpty) {
+      if (role != 'receptionist' && conversationIdFromUrl != null && conversationIdFromUrl.isNotEmpty) {
         setState(() {
           _conversationId = conversationIdFromUrl;
           _showWelcomeMessage = false;
