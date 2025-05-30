@@ -15,6 +15,7 @@ import 'screens/receptionist_screen.dart';
 import 'screens/choose_role_screen.dart';
 import 'config/platform_config.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'screens/receptionist_auth_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -108,12 +109,11 @@ class ChatScreenState extends State<ChatScreen> {
           });
           return;
         }
-        
         if (conversationIdFromUrl != null && conversationIdFromUrl.isNotEmpty) {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => ReceptionistScreen(
+              builder: (context) => ReceptionistAuthScreen(
                 conversationId: conversationIdFromUrl,
                 receptionistName: receptionistName,
               ),
