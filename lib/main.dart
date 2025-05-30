@@ -45,19 +45,25 @@ void main() async {
 class HotelChatbotApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    print('DEBUG: HotelChatbotApp build appelé');
     Widget initialScreen = ChooseRoleScreen();
     if (kIsWeb) {
       final uri = Uri.base;
+      print('DEBUG: URI de base sur le web: ${uri.toString()}');
       final conversationIdFromUrl = uri.pathSegments.length >= 2 && uri.pathSegments[0] == 'conversation'
           ? uri.pathSegments[1]
           : null;
       final role = uri.queryParameters['role'];
       String? receptionistName = uri.queryParameters['receptionistName'];
+      print('DEBUG: Paramètres détectés - role: $role, conversationId: $conversationIdFromUrl, receptionistName: $receptionistName');
       if (role == 'receptionist' && conversationIdFromUrl != null && conversationIdFromUrl.isNotEmpty && receptionistName != null && receptionistName.isNotEmpty) {
+        print('DEBUG: Rôle réceptionniste détecté avec paramètres valides. Routage vers authentification.');
         initialScreen = ReceptionistAuthScreen(
           conversationId: conversationIdFromUrl,
           receptionistName: receptionistName,
         );
+      } else {
+        print('DEBUG: Rôle réceptionniste NON détecté ou paramètres manquants/invalides. Routage initial normal (ChooseRoleScreen ou autre).');
       }
     }
     return MaterialApp(

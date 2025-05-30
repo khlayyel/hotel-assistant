@@ -18,6 +18,21 @@ class ChooseRoleScreen extends StatelessWidget {
               SizedBox(height: 40),
               ElevatedButton(
                 onPressed: () async {
+                  // Vérifier si l'URL indique un rôle de réceptionniste
+                  if (kIsWeb) {
+                    final uri = Uri.base;
+                    final role = uri.queryParameters['role'];
+                    if (role == 'receptionniste' || role == 'receptionist') {
+                       // Si c'est un lien réceptionniste, ne pas naviguer ici.
+                       // L'authentification est déjà gérée par le routage initial.
+                       print('Tentative de connexion client sur un lien réceptionniste. Ignoré.');
+                       return; // Sortir de la fonction onPressed
+                    }
+                  }
+
+                  // Si ce n'est pas un lien réceptionniste (ou sur mobile),
+                  // procéder à la connexion client normale.
+
                   // Vider les infos client pour forcer la saisie à chaque fois
                   final prefs = await SharedPreferences.getInstance();
                   await prefs.remove('clientNom');
