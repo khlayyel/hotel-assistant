@@ -18,7 +18,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'screens/receptionist_auth_screen.dart';
 import 'screens/login_admin_screen.dart';
 import 'package:go_router/go_router.dart';
-import 'screens/conversation_redirect_screen.dart';
 
 void main() async {
   print('DEBUG: main() started');
