@@ -6,7 +6,7 @@ class Environment {
   );
   static const String webAppUrl = String.fromEnvironment(
     'WEB_APP_URL',
-    defaultValue: 'https://web-woad-nine.vercel.app'
+    defaultValue: 'https://hotel-assistant-jdlid.vercel.app'
   );
   static const int maxRetries = 30;
   static const Duration retryDelay = Duration(seconds: 1);
