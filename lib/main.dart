@@ -19,6 +19,7 @@ import 'screens/receptionist_auth_screen.dart';
 import 'screens/login_admin_screen.dart';
 
 void main() async {
+  print('DEBUG: main() started');
   WidgetsFlutterBinding.ensureInitialized();
   
   try {
@@ -47,6 +48,7 @@ class HotelChatbotApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     print('DEBUG HotelChatbotApp: build appelé');
+    print('DEBUG HotelChatbotApp: Uri.base est ${Uri.base}');
     // Utilisation du routage nommé pour gérer les différentes URLs
     return MaterialApp(
       debugShowCheckedModeBanner: false,
