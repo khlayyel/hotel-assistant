@@ -72,7 +72,7 @@ app.post('/api/predictions', async (req, res) => {
 
 // Endpoint pour envoyer un email de notification
 app.post('/api/sendNotification', async (req, res) => {
-  const { title, body, emails, conversationLink } = req.body;
+  const { title, body, emails, conversationId, receptionistName, hotelId } = req.body;
   try {
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
       console.error('❌ EMAIL_USER ou EMAIL_PASS manquant dans les variables d\'environnement.');
@@ -88,6 +88,7 @@ app.post('/api/sendNotification', async (req, res) => {
     for (const email of emails) {
       console.log(`[${new Date().toISOString()}] Début envoi mail à ${email}`);
       const start = Date.now();
+      const conversationLink = `${process.env.WEB_APP_URL}/conversation/${conversationId}?role=receptionist&receptionistName=${encodeURIComponent(receptionistName)}&hotelId=${encodeURIComponent(hotelId)}`;
       await transporter.sendMail({
         from: process.env.EMAIL_USER,
         to: email,
