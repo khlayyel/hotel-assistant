@@ -45,14 +45,7 @@ void main() async {
   // Définir le GoRouter
   final _router = GoRouter(
     routes: [
-      GoRoute(
-        path: '/',
-        builder: (context, state) => ChooseRoleScreen(),
-      ),
-      GoRoute(
-        path: '/admin-login',
-        builder: (context, state) => LoginAdminScreen(),
-      ),
+      // Placer les routes réceptionniste en premier pour potentiellement aider go_router avec les redirections
       // Route pour l'authentification réceptionniste avec ID de conversation dans le chemin
       GoRoute(
         path: '/receptionniste-auth/:conversationId',
@@ -106,6 +99,14 @@ void main() async {
            path: '/chat',
            builder: (context, state) => ChatScreen(),
          ),
+      GoRoute(
+        path: '/',
+        builder: (context, state) => ChooseRoleScreen(),
+      ),
+      GoRoute(
+        path: '/admin-login',
+        builder: (context, state) => LoginAdminScreen(),
+      ),
        // TODO: Ajouter la route pour l'écran de gestion des hôtels (admin)
         GoRoute(
           path: '/gestion-hotels',
