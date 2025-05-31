@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hotix_assistant/screens/receptionist_auth_screen.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hotix_assistant/config/environment.dart';
 
 class ChatScreen extends StatefulWidget {
   // ... (existing code)

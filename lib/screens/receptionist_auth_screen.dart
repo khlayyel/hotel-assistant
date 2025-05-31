@@ -26,12 +26,20 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
 
     print('DEBUG ReceptionistAuthScreen: initState appelé. conversationId: $conversationId, receptionistName: $receptionistName, hotelId: $hotelId');
 
-    if (conversationId == null || conversationId.isEmpty || receptionistName == null || receptionistName.isEmpty || hotelId == null || hotelId.isEmpty) {
+    if (conversationId == null || conversationId.isEmpty || receptionistName == null || receptionistName.isEmpty) {
        setState(() {
-          _error = "Les informations nécessaires à l\'authentification sont manquantes dans l\'URL.";
+          _error = "Les informations nécessaires (ID conversation ou nom réceptionniste) sont manquantes dans l\'URL.";
           _isLoading = false;
        });
-       print('DEBUG ReceptionistAuthScreen: Paramètres manquants dans l\'URL.');
+       print('DEBUG ReceptionistAuthScreen: ID conversation ou nom réceptionniste manquant dans l\'URL.');
+       return;
+    }
+     if (hotelId == null || hotelId.isEmpty) {
+         setState(() {
+          _error = "L\'identifiant de l\'hôtel est manquant dans l\'URL. Ce lien pourrait être invalide.";
+          _isLoading = false;
+       });
+       print('DEBUG ReceptionistAuthScreen: HotelId manquant dans l\'URL.');
        return;
     }
   }

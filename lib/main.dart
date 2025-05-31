@@ -120,15 +120,14 @@ void main() async {
         if (state.uri.pathSegments.length >= 2 && state.uri.pathSegments[0] == 'conversation' && state.uri.queryParameters.containsKey('role') && state.uri.queryParameters['role'] == 'receptionist') {
            final conversationId = state.uri.pathSegments[1];
            final receptionistName = state.uri.queryParameters['receptionistName'];
-           final hotelId = state.uri.queryParameters['hotelId']; // Lire hotelId dans le redirector
+           final hotelId = state.uri.queryParameters['hotelId'];
 
-           // Inclure hotelId dans la condition de redirection
-           if (conversationId.isNotEmpty && receptionistName != null && receptionistName.isNotEmpty && hotelId != null && hotelId.isNotEmpty) {
-               // Corriger les caractères non-ASCII dans la chaîne de caractères
-               print('DEBUG GoRouter: Redirection détectée pour URL réceptionniste. Redirige vers /receptionniste-auth/$conversationId?receptionistName=${Uri.encodeComponent(receptionistName)}&hotelId=${Uri.encodeComponent(hotelId)}');
-               // Rediriger vers la route d'authentification avec les paramètres appropriés
-               // Inclure hotelId dans la redirection
-               return '/receptionniste-auth/$conversationId?receptionistName=${Uri.encodeComponent(receptionistName)}&hotelId=${Uri.encodeComponent(hotelId)}';
+           // Assouplir la condition : ne pas exiger hotelId ici pour la redirection
+           if (conversationId.isNotEmpty && receptionistName != null && receptionistName.isNotEmpty) {
+               print('DEBUG GoRouter: Redirection détectée pour URL réceptionniste. Redirige vers /receptionniste-auth/$conversationId?receptionistName=${Uri.encodeComponent(receptionistName)}${hotelId != null && hotelId.isNotEmpty ? '&hotelId=${Uri.encodeComponent(hotelId)}' : ''}');
+               // Rediriger vers la route d'authentification avec les paramètres disponibles
+               // On inclut hotelId s'il est présent dans l'URL d'origine
+               return '/receptionniste-auth/$conversationId?receptionistName=${Uri.encodeComponent(receptionistName)}${hotelId != null && hotelId.isNotEmpty ? '&hotelId=${Uri.encodeComponent(hotelId)}' : ''}';
            }
         }
 
