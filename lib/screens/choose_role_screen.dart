@@ -25,7 +25,7 @@ class ChooseRoleScreen extends StatelessWidget {
 
       // Si c'est l'URL de la conversation réceptionniste avec les paramètres requis, rediriger
       if (isConversationPath && conversationIdFromUrl != null && conversationIdFromUrl.isNotEmpty && role == 'receptionist' && receptionistName != null && receptionistName.isNotEmpty) {
-        print('DEBUG ChooseRoleScreen: Rôle réceptionniste détecté dans l'URL. Redirection vers l'authentification...');
+        print("DEBUG ChooseRoleScreen: Rôle réceptionniste détecté dans l'URL. Redirection vers l'authentification...");
         // Utiliser addPostFrameCallback pour déclencher la navigation après le build
         WidgetsBinding.instance.addPostFrameCallback((_) {
            Navigator.pushReplacementNamed(
