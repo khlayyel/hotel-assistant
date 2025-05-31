@@ -18,6 +18,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'screens/receptionist_auth_screen.dart';
 import 'screens/login_admin_screen.dart';
 import 'package:go_router/go_router.dart';
+import 'screens/conversation_redirect_screen.dart';
 
 void main() async {
   print('DEBUG: main() started');
@@ -99,6 +100,11 @@ void main() async {
            path: '/chat',
            builder: (context, state) => ChatScreen(),
          ),
+        // Nouvelle route pour intercepter les URLs de conversation et déclencher la redirection
+        GoRoute(
+          path: '/conversation/:conversationId', // Correspond au format de l'URL dans l'email
+          builder: (context, state) => ConversationRedirectScreen(), // Pointer vers le nouvel écran
+        ),
       GoRoute(
         path: '/',
         builder: (context, state) => ChooseRoleScreen(),
@@ -115,22 +121,15 @@ void main() async {
     ],
     // Redirection initiale pour gérer l'URL d'entrée (web)
     redirect: (context, state) {
-       // Corriger les caractères non-ASCII dans la chaîne de caractères
+       // Retirer la logique spécifique aux URLs /conversation ici, elle est gérée par ConversationRedirectScreen
        print('DEBUG GoRouter: Redirector appelé. path: ${state.uri.path}, query: ${state.uri.query}');
-       // Si l'URL correspond au schéma de la conversation réceptionniste
-        if (state.uri.pathSegments.length >= 2 && state.uri.pathSegments[0] == 'conversation' && state.uri.queryParameters.containsKey('role') && state.uri.queryParameters['role'] == 'receptionist') {
-           final conversationId = state.uri.pathSegments[1];
-           final receptionistName = state.uri.queryParameters['receptionistName'];
-           final hotelId = state.uri.queryParameters['hotelId'];
-
-           // Assouplir la condition : ne pas exiger hotelId ici pour la redirection
-           if (conversationId.isNotEmpty && receptionistName != null && receptionistName.isNotEmpty) {
-               print('DEBUG GoRouter: Redirection détectée pour URL réceptionniste. Redirige vers /receptionniste-auth/$conversationId?receptionistName=${Uri.encodeComponent(receptionistName)}${hotelId != null && hotelId.isNotEmpty ? '&hotelId=${Uri.encodeComponent(hotelId)}' : ''}');
-               // Rediriger vers la route d'authentification avec les paramètres disponibles
-               // On inclut hotelId s'il est présent dans l'URL d'origine
-               return '/receptionniste-auth/$conversationId?receptionistName=${Uri.encodeComponent(receptionistName)}${hotelId != null && hotelId.isNotEmpty ? '&hotelId=${Uri.encodeComponent(hotelId)}' : ''}';
-           }
-        }
+       // Si l'URL d'origine *n'est pas* une URL de conversation (celle gérée par la nouvelle route), on ne fait rien ici.
+       // La nouvelle route /conversation/:conversationId gérera les URLs correspondantes.
+       if (state.uri.pathSegments.length >= 2 && state.uri.pathSegments[0] == 'conversation') {
+          // Si c'est une URL /conversation, laisser la nouvelle route la gérer.
+          print('DEBUG GoRouter: URL /conversation détectée, laisser ConversationRedirectScreen gérer.');
+          return null; // Ne pas rediriger ici, laisser la route /conversation faire son travail
+       }
 
        // Pas de redirection nécessaire pour les autres routes par défaut
        print('DEBUG GoRouter: Pas de redirection nécessaire pour ${state.uri.path}');
