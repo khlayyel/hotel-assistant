@@ -45,7 +45,7 @@ app.post('/api/predictions', async (req, res) => {
       body: JSON.stringify({
         model: "llama-3.3-70b-versatile",
         messages: [
-          { role: "system", content: "Tu es un assistant hôtelier professionnel, réponds toujours en français, poliment et efficacement." },
+          { role: "system", content: "Tu es un assistant hôtelier professionnel, réponds toujours en langue du client, poliment et efficacement." },
           { role: "user", content: input.prompt }
         ],
         temperature: 1,
@@ -89,7 +89,7 @@ app.post('/api/sendNotification', async (req, res) => {
       console.log(`[${new Date().toISOString()}] Début envoi mail à ${email}`);
       const start = Date.now();
       const conversationLink = `https://hotel-assistant-jdlid.vercel.app/conversation/${conversationId}?role=receptionist&receptionistName=${encodeURIComponent(receptionistName)}&hotelId=${encodeURIComponent(hotelId)}`;
-      console.log("DEBUG WEB_APP_URL:", process.env.WEB_APP_URL);
+      console.log("********* TEST LOG KHALLI *********");
       console.log("DEBUG conversationLink:", conversationLink);
       await transporter.sendMail({
         from: process.env.EMAIL_USER,
