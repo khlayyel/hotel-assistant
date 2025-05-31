@@ -46,46 +46,61 @@ class HotelChatbotApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     print('DEBUG HotelChatbotApp: build appelé');
-    Widget initialScreen = ChooseRoleScreen(); // Écran par défaut
-    String debugReason = 'Default: ChooseRoleScreen';
-
-    if (kIsWeb) {
-      final uri = Uri.base;
-      print('DEBUG HotelChatbotApp: URI de base sur le web: ${uri.toString()}');
-      final conversationIdFromUrl = uri.pathSegments.length >= 2 && uri.pathSegments[0] == 'conversation'
-          ? uri.pathSegments[1]
-          : null;
-      final role = uri.queryParameters['role'];
-      String? receptionistName = uri.queryParameters['receptionistName'];
-
-      print('DEBUG HotelChatbotApp: Paramètres détectés - role: $role, conversationId: $conversationIdFromUrl, receptionistName: $receptionistName');
-
-      // Logique principale pour le routage réceptionniste sur le web
-      if (role == 'receptionist' && conversationIdFromUrl != null && conversationIdFromUrl.isNotEmpty && receptionistName != null && receptionistName.isNotEmpty) {
-        print('DEBUG HotelChatbotApp: Rôle réceptionniste détecté avec paramètres valides.');
-        initialScreen = ReceptionistAuthScreen(
-          conversationId: conversationIdFromUrl,
-          receptionistName: receptionistName,
-        );
-        debugReason = 'Receptionist: ReceptionistAuthScreen';
-        print('DEBUG HotelChatbotApp: initialScreen set to ReceptionistAuthScreen');
-      } else {
-         print('DEBUG HotelChatbotApp: Rôle réceptionniste NON détecté ou paramètres manquants/invalides.');
-         debugReason = 'Client/Other: ChooseRoleScreen';
-         print('DEBUG HotelChatbotApp: initialScreen remains ChooseRoleScreen');
-      }
-    } else {
-      print('DEBUG HotelChatbotApp: Non web, initialScreen remains ChooseRoleScreen');
-      debugReason = 'Mobile: ChooseRoleScreen';
-    }
-
-    print('DEBUG HotelChatbotApp: Final initialScreen type: ${initialScreen.runtimeType} (Reason: $debugReason)');
-
+    // Utilisation du routage nommé pour gérer les différentes URLs
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Système de Chat Intelligent pour Hôtels',
       theme: ThemeData.dark(),
-      home: initialScreen, // Utilisation de l'écran déterminé
+      // home: initialScreen, // Remplacé par l'utilisation de initialRoute et routes
+      initialRoute: WidgetsBinding.instance.window.location.pathname == '/' ? '/' : WidgetsBinding.instance.window.location.href, // Utiliser l'URL complète pour la route initiale si ce n'est pas la racine
+      onGenerateRoute: (settings) {
+        print('DEBUG HotelChatbotApp: onGenerateRoute appelé pour ${settings.name}');
+        Uri uri;
+        try {
+          uri = Uri.parse(settings.name!);
+        } catch (e) {
+           print('DEBUG HotelChatbotApp: Erreur de parsing URI: ${e}');
+           // En cas d'erreur de parsing, rediriger vers la page d'accueil par défaut
+           return MaterialPageRoute(builder: (context) => ChooseRoleScreen());
+        }
+
+        print('DEBUG HotelChatbotApp: URI parsée: ${uri.toString()}');
+        final pathSegments = uri.pathSegments;
+        final queryParameters = uri.queryParameters;
+
+        final bool isConversationPath = pathSegments.length >= 2 && pathSegments[0] == 'conversation';
+        final String? conversationIdFromUrl = isConversationPath ? pathSegments[1] : null;
+        final String? role = queryParameters['role'];
+        final String? receptionistName = queryParameters['receptionistName'];
+
+        print('DEBUG HotelChatbotApp: Paramètres d'URL détectés dans onGenerateRoute - path: ${uri.path}, role: $role, conversationId: $conversationIdFromUrl, receptionistName: $receptionistName');
+
+        // Si c'est l'URL de la conversation réceptionniste avec les paramètres requis
+        if (isConversationPath && conversationIdFromUrl != null && conversationIdFromUrl.isNotEmpty && role == 'receptionist' && receptionistName != null && receptionistName.isNotEmpty) {
+          print('DEBUG HotelChatbotApp: Rôle réceptionniste détecté avec paramètres valides. Routage vers /receptionist-auth');
+          // Passer les paramètres comme arguments à la route /receptionist-auth
+          return MaterialPageRoute(
+            settings: RouteSettings(
+              name: '/receptionist-auth',
+              arguments: {
+                'conversationId': conversationIdFromUrl,
+                'receptionistName': receptionistName,
+              },
+            ),
+            builder: (context) => ReceptionistAuthScreen(),
+          );
+        }
+
+        // Route par défaut si aucune autre correspondance
+        print('DEBUG HotelChatbotApp: Aucune route spécifique ne correspond. Routage vers / (ChooseRoleScreen)');
+        return MaterialPageRoute(builder: (context) => ChooseRoleScreen());
+      },
+      routes: { // Définition des routes nommées principales
+         '/': (context) => ChooseRoleScreen(), // Route par défaut explicite
+         '/admin-login': (context) => LoginAdminScreen(),
+         '/receptionist-auth': (context) => ReceptionistAuthScreen(), // Définir la route pour l'authentification réceptionniste
+         //'/chat': (context) => ChatScreen(), // ChatScreen sera navigué après authentification ou sélection de rôle
+      },
     );
   }
 }

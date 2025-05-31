@@ -3,14 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'receptionist_screen.dart';
 
 class ReceptionistAuthScreen extends StatefulWidget {
-  final String conversationId;
-  final String receptionistName;
-
-  const ReceptionistAuthScreen({
-    Key? key,
-    required this.conversationId,
-    required this.receptionistName,
-  }) : super(key: key);
+  const ReceptionistAuthScreen({Key? key}) : super(key: key);
 
   @override
   _ReceptionistAuthScreenState createState() => _ReceptionistAuthScreenState();
@@ -22,7 +15,37 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
   String? _error;
   bool _obscurePassword = true;
 
+  String? _conversationId;
+  String? _receptionistName;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final args = ModalRoute.of(context)?.settings.arguments as Map<String, String>?;
+      if (args != null) {
+        setState(() {
+          _conversationId = args['conversationId'];
+          _receptionistName = args['receptionistName'];
+        });
+        print('DEBUG ReceptionistAuthScreen: Arguments de route reçus - conversationId: $_conversationId, receptionistName: $_receptionistName');
+      } else {
+        setState(() {
+           _error = "Informations de conversation manquantes.";
+           print('DEBUG ReceptionistAuthScreen: Arguments de route manquants!');
+        });
+      }
+    });
+  }
+
   Future<void> _authenticate() async {
+    if (_receptionistName == null || _conversationId == null) {
+       setState(() {
+          _error = "Les informations nécessaires à l\'authentification sont manquantes.";
+       });
+       return;
+    }
+
     if (_passwordController.text.isEmpty) {
       setState(() {
         _error = "Veuillez entrer votre mot de passe";
@@ -36,10 +59,9 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
     });
 
     try {
-      // Récupérer le réceptionniste depuis Firestore
       final receptionistQuery = await FirebaseFirestore.instance
           .collectionGroup('receptionists')
-          .where('name', isEqualTo: widget.receptionistName)
+          .where('name', isEqualTo: _receptionistName)
           .get();
 
       if (receptionistQuery.docs.isEmpty) {
@@ -53,10 +75,9 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
       final receptionistDoc = receptionistQuery.docs.first;
       final receptionistData = receptionistDoc.data();
 
-      // Vérifier que le nom du réceptionniste dans la base correspond exactement à celui du lien
-      if (receptionistData['name'] != widget.receptionistName) {
+      if (receptionistData['name'] != _receptionistName) {
         setState(() {
-          _error = "Ce lien est réservé à ${widget.receptionistName}. Veuillez utiliser vos propres identifiants.";
+          _error = "Ce lien est réservé à ${_receptionistName}. Veuillez utiliser vos propres identifiants.";
           _isLoading = false;
         });
         return;
@@ -70,19 +91,18 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
         return;
       }
 
-      // Authentification réussie
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (context) => ReceptionistScreen(
-            conversationId: widget.conversationId,
-            receptionistName: widget.receptionistName,
+            conversationId: _conversationId!,
+            receptionistName: _receptionistName!,
           ),
         ),
       );
     } catch (e) {
       setState(() {
-        _error = "Une erreur est survenue";
+        _error = "Une erreur est survenue lors de l\'authentification.";
         _isLoading = false;
       });
       print('Erreur d\'authentification: $e');
@@ -91,6 +111,14 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_receptionistName == null || _conversationId == null) {
+      return Scaffold(
+        body: Center(
+          child: _error != null ? Text(_error!, style: TextStyle(color: Colors.red)) : CircularProgressIndicator()
+        ),
+      );
+    }
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -111,7 +139,6 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Logo ou icône
                     Container(
                       width: 100,
                       height: 100,
@@ -134,7 +161,6 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
                     ),
                     SizedBox(height: 32),
                     
-                    // Titre
                     Text(
                       "Authentification Réceptionniste",
                       style: TextStyle(
@@ -145,7 +171,7 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
                     ),
                     SizedBox(height: 8),
                     Text(
-                      widget.receptionistName,
+                      _receptionistName!,
                       style: TextStyle(
                         fontSize: 18,
                         color: Colors.white70,
@@ -153,7 +179,6 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
                     ),
                     SizedBox(height: 32),
 
-                    // Champ de mot de passe
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -194,7 +219,6 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
                     ),
                     SizedBox(height: 16),
 
-                    // Message d'erreur
                     if (_error != null)
                       Container(
                         padding: EdgeInsets.all(12),
@@ -218,7 +242,6 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
                       ),
                     SizedBox(height: 24),
 
-                    // Bouton de connexion
                     SizedBox(
                       width: double.infinity,
                       height: 50,
