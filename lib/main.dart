@@ -18,11 +18,18 @@ import 'package:url_launcher/url_launcher.dart';
 import 'screens/receptionist_auth_screen.dart';
 import 'screens/login_admin_screen.dart';
 import 'package:go_router/go_router.dart';
+import 'dart:html' as html; // Importer dart:html pour accéder à window.location.href
 
 void main() async {
   print('DEBUG: main() started');
   WidgetsFlutterBinding.ensureInitialized();
   
+  // Ajouter ce print pour voir l'URL de base
+  if (kIsWeb) {
+     print('DEBUG: Url.base est ${Uri.base}');
+     print('DEBUG: window.location.href est ${html.window.location.href}');
+  }
+
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
@@ -104,8 +111,13 @@ void main() async {
     ],
     // Redirection initiale pour gérer l'URL d'entrée (web)
     redirect: (context, state) {
-       // Le redirector principal gère toutes les URLs entrantes pour décider de la première page
-       print('DEBUG GoRouter: Redirector appelé. path: ${state.uri.path}, query: ${state.uri.query}');
+       print('DEBUG GoRouter Redirect START');
+       print('DEBUG GoRouter state.uri: ${state.uri}');
+       print('DEBUG GoRouter state.uri.path: ${state.uri.path}');
+       print('DEBUG GoRouter state.uri.query: ${state.uri.query}');
+       print('DEBUG GoRouter state.uri.queryParameters: ${state.uri.queryParameters}');
+       print('DEBUG GoRouter state.uri.pathSegments: ${state.uri.pathSegments}');
+       print('DEBUG GoRouter Redirect END');
 
        // Vérifier si l'URL correspond au schéma de la conversation réceptionniste
        if (state.uri.pathSegments.length >= 2 && state.uri.pathSegments[0] == 'conversation') {
@@ -113,9 +125,10 @@ void main() async {
           // Lire tous les paramètres de requête de l'URL d'origine
           final queryParams = state.uri.queryParameters;
           final role = queryParams['role'];
+          final hotelId = queryParams['hotelId']; // Lire hotelId ici aussi
 
           // Si c'est une URL de conversation réceptionniste, rediriger vers la page de login générique
-          if (role == 'receptionist' && conversationId.isNotEmpty) {
+          if (role == 'receptionist' && conversationId.isNotEmpty && hotelId != null && hotelId.isNotEmpty) { // Vérifier aussi hotelId ici
               // Rediriger vers la page de login générique /receptionniste/login
               // Passer tous les paramètres de requête de l'URL d'origine à la nouvelle route
               final redirectPath = '/receptionniste/login?' + Uri(queryParameters: queryParams).query;
