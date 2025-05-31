@@ -12,57 +12,48 @@ class ReceptionistAuthScreen extends StatefulWidget {
 
 class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _usernameController = TextEditingController();
   bool _isLoading = false;
   String? _error;
   bool _obscurePassword = true;
+
+  String? _targetConversationId;
+  String? _targetReceptionistNameFromUrl;
+  String? _targetHotelId;
 
   @override
   void initState() {
     super.initState();
     final goRouterState = GoRouterState.of(context);
-    final conversationId = goRouterState.pathParameters['conversationId'];
-    final receptionistName = goRouterState.uri.queryParameters['receptionistName'];
-    final hotelId = goRouterState.uri.queryParameters['hotelId'];
+    _targetConversationId = goRouterState.uri.queryParameters['conversationId'];
+    _targetReceptionistNameFromUrl = goRouterState.uri.queryParameters['receptionistName'];
+    _targetHotelId = goRouterState.uri.queryParameters['hotelId'];
 
-    print('DEBUG ReceptionistAuthScreen: initState appelé. conversationId: $conversationId, receptionistName: $receptionistName, hotelId: $hotelId');
+    print('DEBUG ReceptionistAuthScreen: initState (Login générique) appelé. Cible - conversationId: $_targetConversationId, receptionistName(URL): $_targetReceptionistNameFromUrl, hotelId: $_targetHotelId');
 
-    if (conversationId == null || conversationId.isEmpty || receptionistName == null || receptionistName.isEmpty) {
-       setState(() {
-          _error = "Les informations nécessaires (ID conversation ou nom réceptionniste) sont manquantes dans l\'URL.";
-          _isLoading = false;
-       });
-       print('DEBUG ReceptionistAuthScreen: ID conversation ou nom réceptionniste manquant dans l\'URL.');
-       return;
-    }
-     if (hotelId == null || hotelId.isEmpty) {
+    if (_targetConversationId == null || _targetConversationId!.isEmpty || _targetHotelId == null || _targetHotelId!.isEmpty) {
          setState(() {
-          _error = "L\'identifiant de l\'hôtel est manquant dans l\'URL. Ce lien pourrait être invalide.";
-          _isLoading = false;
-       });
-       print('DEBUG ReceptionistAuthScreen: HotelId manquant dans l\'URL.');
-       return;
-    }
+             _error = "Lien de conversation incomplet ou invalide.";
+         });
+         print('DEBUG ReceptionistAuthScreen: Paramètres de conversation cible manquants dans l\'URL.');
+     }
   }
 
   Future<void> _authenticate() async {
-    final goRouterState = GoRouterState.of(context);
-    final conversationId = goRouterState.pathParameters['conversationId'];
-    final receptionistName = goRouterState.uri.queryParameters['receptionistName'];
-    final hotelId = goRouterState.uri.queryParameters['hotelId'];
+    final enteredUsername = _usernameController.text.trim();
+    final enteredPassword = _passwordController.text.trim();
 
-    print('DEBUG ReceptionistAuthScreen: Authenticate appelé. conversationId: $conversationId, receptionistName: $receptionistName, hotelId: $hotelId');
+    if (_targetConversationId == null || _targetConversationId!.isEmpty || _targetHotelId == null || _targetHotelId!.isEmpty) {
+         setState(() {
+             _error = "Impossible de procéder: Informations de conversation cible manquantes.";
+             _isLoading = false;
+         });
+         return;
+     }
 
-    if (receptionistName == null || conversationId == null || conversationId.isEmpty || hotelId == null || hotelId.isEmpty) {
-       setState(() {
-          _error = "Les informations nécessaires à l\'authentification sont manquantes dans l\'URL.";
-          _isLoading = false;
-       });
-       return;
-    }
-
-    if (_passwordController.text.isEmpty) {
+    if (enteredUsername.isEmpty || enteredPassword.isEmpty) {
       setState(() {
-        _error = "Veuillez entrer votre mot de passe";
+        _error = "Veuillez entrer votre nom d\'utilisateur et mot de passe";
         _isLoading = false;
       });
       return;
@@ -76,62 +67,60 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
     try {
       final receptionistQuery = await FirebaseFirestore.instance
           .collectionGroup('receptionists')
-          .where('name', isEqualTo: receptionistName)
+          .where('name', isEqualTo: enteredUsername)
           .get();
 
       if (receptionistQuery.docs.isEmpty) {
         setState(() {
-          _error = "Réceptionniste non trouvé ou nom dans l\'URL invalide";
+          _error = "Nom d\'utilisateur ou mot de passe incorrect";
           _isLoading = false;
         });
         return;
       }
 
-      final receptionistDoc = receptionistQuery.docs.first;
-      final receptionistData = receptionistDoc.data();
+      DocumentSnapshot? authenticatedReceptionistDoc;
+      for (var doc in receptionistQuery.docs) {
+          final parentHotelId = doc.reference.parent.parent?.id;
+          if (parentHotelId == _targetHotelId) {
+              authenticatedReceptionistDoc = doc;
+              break;
+          }
+      }
 
-      if (receptionistData['name'] != receptionistName) {
+       if (authenticatedReceptionistDoc == null) {
+            setState(() {
+              _error = "Nom d\'utilisateur ou mot de passe incorrect pour cet hôtel.";
+              _isLoading = false;
+            });
+            return;
+       }
+
+      final receptionistData = authenticatedReceptionistDoc.data() as Map<String, dynamic>?;
+
+       if (receptionistData == null || receptionistData['password'] != enteredPassword) {
         setState(() {
-          _error = "Ce lien est réservé à ${receptionistName}. Veuillez utiliser vos propres identifiants.";
+          _error = "Nom d\'utilisateur ou mot de passe incorrect";
           _isLoading = false;
         });
         return;
       }
 
-      if (receptionistData['password'] != _passwordController.text) {
-        setState(() {
-          _error = "Mot de passe incorrect";
-          _isLoading = false;
-        });
-        return;
-      }
+      final authenticatedReceptionistName = receptionistData['name'];
+      print('DEBUG ReceptionistAuthScreen: Authentification réussie pour $authenticatedReceptionistName. Navigation vers conversation cible.');
 
-      print('DEBUG ReceptionistAuthScreen: Authentification réussie. Navigation vers ReceptionistScreen.');
-      context.go('/receptionniste/chat/$conversationId?receptionistName=${Uri.encodeComponent(receptionistName)}&hotelId=${Uri.encodeComponent(hotelId)}');
+      context.go('/receptionniste/chat/$_targetConversationId?receptionistName=${Uri.encodeComponent(authenticatedReceptionistName!)}&hotelId=${Uri.encodeComponent(_targetHotelId!)}');
 
     } catch (e) {
       setState(() {
         _error = "Une erreur est survenue lors de l\'authentification: ${e}";
         _isLoading = false;
       });
-      print('Erreur d\'authentification: $e');
+      print('Erreur d\'authentification (Login générique): $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final goRouterState = GoRouterState.of(context);
-    final receptionistName = goRouterState.uri.queryParameters['receptionistName'];
-    final hotelId = goRouterState.uri.queryParameters['hotelId'];
-
-    if (receptionistName == null || receptionistName.isEmpty || hotelId == null || hotelId.isEmpty) {
-       return Scaffold(
-        body: Center(
-          child: _error != null ? Text(_error!, style: TextStyle(color: Colors.red)) : CircularProgressIndicator()
-        ),
-      );
-    }
-
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -173,24 +162,44 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
                       ),
                     ),
                     SizedBox(height: 32),
-                    
+
                     Text(
-                      "Authentification Réceptionniste",
+                      "Connexion Réceptionniste",
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
                     ),
-                    SizedBox(height: 8),
-                    Text(
-                      receptionistName,
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: Colors.white70,
+                    SizedBox(height: 32),
+
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 10,
+                            offset: Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: TextField(
+                        controller: _usernameController,
+                        decoration: InputDecoration(
+                          hintText: "Nom d\'utilisateur",
+                          prefixIcon: Icon(Icons.person, color: Color(0xFFe2001a)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                        ),
                       ),
                     ),
-                    SizedBox(height: 32),
+                    SizedBox(height: 16),
 
                     Container(
                       decoration: BoxDecoration(
@@ -298,6 +307,7 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
   @override
   void dispose() {
     _passwordController.dispose();
+    _usernameController.dispose();
     super.dispose();
   }
 } 

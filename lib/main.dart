@@ -46,30 +46,18 @@ void main() async {
   // Définir le GoRouter
   final _router = GoRouter(
     routes: [
-      // Placer les routes réceptionniste en premier pour potentiellement aider go_router avec les redirections
-      // Route pour l'authentification réceptionniste avec ID de conversation dans le chemin
+      // Route générique pour la connexion des réceptionnistes
       GoRoute(
-        path: '/receptionniste-auth/:conversationId',
+        path: '/receptionniste/login', // Nouvelle route de connexion générique
         builder: (context, state) {
-          // Récupérer les paramètres de l'URL en utilisant state.uri.queryParameters
-          final conversationId = state.pathParameters['conversationId'];
-          final receptionistName = state.uri.queryParameters['receptionistName'];
-
-          // Vérifier la présence des paramètres nécessaires
-          if (conversationId != null && conversationId.isNotEmpty && receptionistName != null && receptionistName.isNotEmpty) {
-            print('DEBUG GoRouter: Routage vers ReceptionistAuthScreen avec conversationId: $conversationId, receptionistName: $receptionistName');
-             // Passer les paramètres à l'écran d'authentification
-            return ReceptionistAuthScreen(); // L'écran lira les paramètres via GoRouterState
-          } else {
-            // Si les paramètres sont manquants, rediriger vers l'écran de choix de rôle
-            // Corriger les caractères non-ASCII dans la chaîne de caractères
-            print('DEBUG GoRouter: Paramètres manquants pour authentification réceptionniste. Redirection vers /.');
-            // Rediriger vers la route par défaut
-            return ChooseRoleScreen(); // Ou un écran d'erreur approprié
-          }
+          // Lire tous les paramètres de requête ici pour les passer à l'écran d'authentification
+          // Ces paramètres incluent conversationId, receptionistName (du lien), hotelId, role.
+          // L'écran d'authentification lira ceux dont il a besoin.
+          print('DEBUG GoRouter: Routage vers /receptionniste/login avec queryParameters: ${state.uri.queryParameters}');
+          return ReceptionistAuthScreen(); // L'écran ReceptionistAuthScreen sera adapté pour être un formulaire de login
         },
       ),
-      // Route pour l'écran de chat du réceptionniste (après authentification)
+      // Route pour l'écran de chat du réceptionniste (destination après login)
        GoRoute(
         path: '/receptionniste/chat/:conversationId',
         builder: (context, state) {
@@ -102,17 +90,13 @@ void main() async {
          ),
         // Nouvelle route pour intercepter les URLs de conversation et déclencher la redirection
         GoRoute(
-          path: '/conversation/:conversationId', // Correspond au format de l'URL dans l'email
-          builder: (context, state) => ConversationRedirectScreen(), // Pointer vers le nouvel écran
+          path: '/',
+          builder: (context, state) => ChooseRoleScreen(),
         ),
-      GoRoute(
-        path: '/',
-        builder: (context, state) => ChooseRoleScreen(),
-      ),
-      GoRoute(
-        path: '/admin-login',
-        builder: (context, state) => LoginAdminScreen(),
-      ),
+        GoRoute(
+          path: '/admin-login',
+          builder: (context, state) => LoginAdminScreen(),
+        ),
        // TODO: Ajouter la route pour l'écran de gestion des hôtels (admin)
         GoRoute(
           path: '/gestion-hotels',
@@ -121,19 +105,39 @@ void main() async {
     ],
     // Redirection initiale pour gérer l'URL d'entrée (web)
     redirect: (context, state) {
-       // Retirer la logique spécifique aux URLs /conversation ici, elle est gérée par ConversationRedirectScreen
+       // Le redirector principal gère toutes les URLs entrantes pour décider de la première page
        print('DEBUG GoRouter: Redirector appelé. path: ${state.uri.path}, query: ${state.uri.query}');
-       // Si l'URL d'origine *n'est pas* une URL de conversation (celle gérée par la nouvelle route), on ne fait rien ici.
-       // La nouvelle route /conversation/:conversationId gérera les URLs correspondantes.
+
+       // Vérifier si l'URL correspond au schéma de la conversation réceptionniste
        if (state.uri.pathSegments.length >= 2 && state.uri.pathSegments[0] == 'conversation') {
-          // Si c'est une URL /conversation, laisser la nouvelle route la gérer.
-          print('DEBUG GoRouter: URL /conversation détectée, laisser ConversationRedirectScreen gérer.');
-          return null; // Ne pas rediriger ici, laisser la route /conversation faire son travail
+          final conversationId = state.uri.pathSegments[1];
+          // Lire tous les paramètres de requête de l'URL d'origine
+          final queryParams = state.uri.queryParameters;
+          final role = queryParams['role'];
+
+          // Si c'est une URL de conversation réceptionniste, rediriger vers la page de login générique
+          if (role == 'receptionist' && conversationId.isNotEmpty) {
+              // Rediriger vers la page de login générique /receptionniste/login
+              // Passer tous les paramètres de requête de l'URL d'origine à la nouvelle route
+              final redirectPath = '/receptionniste/login?' + Uri(queryParameters: queryParams).query;
+              print('DEBUG GoRouter: URL Réceptionniste détectée. Redirige vers $redirectPath');
+              return redirectPath;
+          }
+           else if (role == 'client') {
+               // TODO: Gérer les liens client directs si nécessaire, sinon rediriger vers l'accueil
+               print('DEBUG GoRouter: URL Client directe détectée, non gérée spécifiquement. Redirige vers /.');
+               return '/';
+          }
+          else {
+               // URL /conversation mais rôle inconnu ou paramètres manquants, rediriger vers l'accueil
+               print('DEBUG GoRouter: URL /conversation avec rôle inconnu ou paramètres insuffisants. Redirige vers /.');
+               return '/';
+          }
        }
 
-       // Pas de redirection nécessaire pour les autres routes par défaut
-       print('DEBUG GoRouter: Pas de redirection nécessaire pour ${state.uri.path}');
-      return null; // Laisse GoRouter naviguer vers la route correspondante
+        // Pas de redirection spécifique nécessaire pour les autres routes par défaut (comme / ou /chat)
+        print('DEBUG GoRouter: Pas de redirection spécifique nécessaire pour ${state.uri.path}. Laisse GoRouter gérer.');
+       return null; // Laisse GoRouter naviguer vers la route correspondante si elle existe
     },
 
   );

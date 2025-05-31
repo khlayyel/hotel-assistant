@@ -26,19 +26,28 @@ class _ChatScreenState extends State<ChatScreen> {
       final uri = Uri.parse(link);
       final conversationId = uri.queryParameters['conversationId'];
       final receptionistName = uri.queryParameters['receptionistName'];
+      final hotelId = uri.queryParameters['hotelId'];
 
-      if (conversationId != null && receptionistName != null) {
-        context.go('/receptionniste-auth/$conversationId?receptionistName=${Uri.encodeComponent(receptionistName)}');
+      if (conversationId != null && conversationId.isNotEmpty && receptionistName != null && receptionistName.isNotEmpty && hotelId != null && hotelId.isNotEmpty) {
+        final loginUrl = '/receptionniste/login?conversationId=' + Uri.encodeComponent(conversationId) +
+                         '&receptionistName=' + Uri.encodeComponent(receptionistName) +
+                         '&hotelId=' + Uri.encodeComponent(hotelId);
+        print('DEBUG ChatScreen._handleAccessLink: Navigation vers $loginUrl');
+        context.go(loginUrl);
+      } else {
+         print('DEBUG ChatScreen._handleAccessLink: Paramètres manquants dans le lien d\'accès. conversationId: $conversationId, receptionistName: $receptionistName, hotelId: $hotelId');
       }
+
     } catch (e) {
-      print('Erreur lors du traitement du lien: $e');
+      print('Erreur lors du traitement du lien d\'accès: $e');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur lors du traitement du lien.')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Supprimer la logique de vérification d'URL et de retour direct de ReceptionnistAuthScreen
-    // Cette logique est maintenant gérée par le redirector de go_router dans main.dart.
+    // Le redirector de go_router dans main.dart gère l'URL initiale.
+    // Cette logique de vérification d'URL et de retour direct de ReceptionnistAuthScreen n'est plus nécessaire ici.
     /*
     if (Uri.base.queryParameters['role'] == 'receptionist') {
       final conversationId = Uri.base.pathSegments.length >= 2 && Uri.base.pathSegments[0] == 'conversation'
