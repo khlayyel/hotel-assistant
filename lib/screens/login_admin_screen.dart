@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'gestion_hotels_screen.dart';
 import 'choose_role_screen.dart';
+import 'package:go_router/go_router.dart';
 
 class LoginAdminScreen extends StatefulWidget {
   @override
@@ -29,10 +30,7 @@ class _LoginAdminScreenState extends State<LoginAdminScreen> {
       if (query.docs.isNotEmpty) {
         final adminDoc = query.docs.first;
         if (adminDoc.data()['password'] == password) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => GestionHotelsScreen()),
-          );
+          context.go('/gestion-hotels');
           setState(() { _loading = false; });
           return;
         }
@@ -52,10 +50,7 @@ class _LoginAdminScreenState extends State<LoginAdminScreen> {
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
           onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => ChooseRoleScreen()),
-            );
+            context.go('/');
           },
         ),
       ),

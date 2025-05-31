@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'choose_role_screen.dart';
+import 'package:go_router/go_router.dart';
 
 class GestionHotelsScreen extends StatefulWidget {
   @override
@@ -764,10 +765,7 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> {
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
           onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => ChooseRoleScreen()),
-            );
+            context.go('/');
           },
         ),
       ),

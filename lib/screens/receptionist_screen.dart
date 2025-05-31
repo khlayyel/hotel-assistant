@@ -6,18 +6,10 @@ import '../config/environment.dart';
 import '../config/platform_config.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:go_router/go_router.dart';
 
 class ReceptionistScreen extends StatefulWidget {
-  final String conversationId;
-  final String receptionistName;
-  final String? assignedReceptionistName;
-
-  const ReceptionistScreen({
-    Key? key,
-    required this.conversationId,
-    required this.receptionistName,
-    this.assignedReceptionistName,
-  }) : super(key: key);
+  const ReceptionistScreen({Key? key}) : super(key: key);
 
   @override
   State<ReceptionistScreen> createState() => _ReceptionistScreenState();
@@ -31,26 +23,46 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
   bool _isTyping = false;
   bool _isConversationEscalated = false;
 
+  String? _conversationId;
+  String? _receptionistName;
+  String? _hotelId;
+
   @override
   void initState() {
     super.initState();
-    _listenToMessages();
-    _checkEscalationStatus();
+    final goRouterState = GoRouterState.of(context);
+    _conversationId = goRouterState.pathParameters['conversationId'];
+    _receptionistName = goRouterState.uri.queryParameters['receptionistName'];
+    _hotelId = goRouterState.uri.queryParameters['hotelId'];
+
+    print('DEBUG ReceptionistScreen: initState appelé. conversationId: $_conversationId, receptionistName: $_receptionistName, hotelId: $_hotelId');
+
+    if (_conversationId != null && _conversationId!.isNotEmpty && _receptionistName != null && _receptionistName!.isNotEmpty && _hotelId != null && _hotelId!.isNotEmpty) {
+       _listenToMessages();
+      _checkEscalationStatus();
+    } else {
+       print('DEBUG ReceptionistScreen: Paramètres manquants dans l\'URL. Redirection vers /.');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+         context.go('/');
+      });
+    }
   }
 
   void _listenToMessages() {
+    if (_conversationId == null) return;
     _messagesStream = FirebaseFirestore.instance
         .collection('conversations')
-        .doc(widget.conversationId)
+        .doc(_conversationId!)
         .collection('messages')
         .orderBy('timestamp')
         .snapshots();
   }
 
   Future<void> _checkEscalationStatus() async {
+     if (_conversationId == null) return;
     final doc = await FirebaseFirestore.instance
         .collection('conversations')
-        .doc(widget.conversationId)
+        .doc(_conversationId!)
         .get();
     if (doc.exists) {
       setState(() {
@@ -61,46 +73,50 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
 
   void _sendMessage() async {
     if (_controller.text.isEmpty) return;
+     if (_conversationId == null || _receptionistName == null) {
+        print('DEBUG ReceptionistScreen: Cannot send message, conversationId or receptionistName is null.');
+        return;
+    }
     String userMessage = _controller.text.trim();
     _controller.clear();
 
-    // Vérifier si la conversation est déjà prise en charge
     final conversationDoc = await FirebaseFirestore.instance
         .collection('conversations')
-        .doc(widget.conversationId)
+        .doc(_conversationId!)
         .get();
 
-    if (conversationDoc.exists && 
-        conversationDoc.data()?['assignedReceptionist'] != null && 
-        conversationDoc.data()?['assignedReceptionist']['name'] != widget.receptionistName) {
+    if (conversationDoc.exists &&
+        conversationDoc.data()?['assignedReceptionist'] != null &&
+        conversationDoc.data()?['assignedReceptionist']['name'] != _receptionistName) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Cette conversation est déjà prise en charge par un autre réceptionniste.'),
+          content: Text('Cette conversation est déjà prise en charge par un autre réceptionniste (${conversationDoc.data()?['assignedReceptionist']['name']}).'),
           backgroundColor: Colors.red,
         ),
       );
       return;
     }
 
-    // Assigner le réceptionniste à la conversation
-    await FirebaseFirestore.instance
-        .collection('conversations')
-        .doc(widget.conversationId)
-        .update({
-          'isEscalated': true,
-          'assignedReceptionist': {'name': widget.receptionistName},
-        });
+    if (conversationDoc.exists && conversationDoc.data()?['assignedReceptionist'] == null) {
+         await FirebaseFirestore.instance
+            .collection('conversations')
+            .doc(_conversationId!)
+            .update({
+              'isEscalated': true,
+              'assignedReceptionist': {'name': _receptionistName},
+            });
+         print('DEBUG ReceptionistScreen: Assignation du réceptionniste ($_receptionistName) à la conversation ($_conversationId) lors du premier message.');
+    }
 
-    // Envoyer le message
     await FirebaseFirestore.instance
         .collection('conversations')
-        .doc(widget.conversationId)
+        .doc(_conversationId!)
         .collection('messages')
         .add({
           'text': userMessage,
           'isUser': false,
           'timestamp': FieldValue.serverTimestamp(),
-          'senderName': widget.receptionistName,
+          'senderName': _receptionistName,
         });
 
     _scrollToBottom();
@@ -119,7 +135,7 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
   Widget _buildMessage(Map<String, dynamic> data) {
     final sender    = (data['senderName'] ?? "").toString();
     final text      = data['text'] ?? "";
-    final isMe      = sender == widget.receptionistName;
+    final isMe      = sender == _receptionistName;
     final isBot     = sender == "Bot";
     final alignRight= isMe || isBot;
 
@@ -182,6 +198,8 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
   }
 
   Widget _buildInputArea() {
+     if (_conversationId == null || _receptionistName == null) return SizedBox.shrink();
+
     return Center(
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: 600),
@@ -198,7 +216,7 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
                   offset: Offset(0, 2),
                 ),
               ],
-              border: Border.all(color: Color(0xFFe2001a), width: 1.5), // Rouge Hotix
+              border: Border.all(color: Color(0xFFe2001a), width: 1.5),
             ),
             child: Row(
               children: [
@@ -219,7 +237,7 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
                   ),
                 ),
                 IconButton(
-                  icon: Icon(Icons.send, color: Color(0xFFe2001a)), // Rouge Hotix
+                  icon: Icon(Icons.send, color: Color(0xFFe2001a)),
                   onPressed: _sendMessage,
                 ),
               ],
@@ -257,22 +275,21 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_conversationId == null || _conversationId!.isEmpty || _receptionistName == null || _receptionistName!.isEmpty || _hotelId == null || _hotelId!.isEmpty) {
+       return Scaffold(
+        appBar: AppBar(title: Text("Chargement...")),
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text("Conversation avec le client"),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () {
-              // Nettoyer les données de session
-              SharedPreferences.getInstance().then((prefs) {
-                prefs.remove('clientNom');
-                prefs.remove('clientPrenom');
-                prefs.remove('clientHotelId');
-                prefs.remove('clientHotelName');
-              });
-              // Rediriger vers la page de connexion
-              PlatformConfig.navigateToUrl(Environment.webAppUrl, context);
+            onPressed: () async {
+              context.go('/');
             },
             tooltip: 'Déconnexion',
           ),
@@ -283,6 +300,7 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
           constraints: BoxConstraints(maxWidth: 700),
           child: Column(
             children: [
+              _buildEscalationBadge(),
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
                   stream: _messagesStream,
@@ -313,7 +331,6 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
               ),
               _buildInputArea(),
               SizedBox(height: 20),
-              _buildEscalationBadge(),
             ],
           ),
         ),
@@ -324,18 +341,137 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
   @override
   void dispose() {
     super.dispose();
-    // Libérer le réceptionniste quand il quitte la conversation
-    FirebaseFirestore.instance
-        .collection('conversations')
-        .doc(widget.conversationId)
-        .update({
-          'assignedReceptionist': null,
-          'isEscalated': false
+    if (_conversationId != null && _receptionistName != null && _hotelId != null) {
+       print('DEBUG ReceptionistScreen: Disposing. Attempting to free receptionist ($_receptionistName) from conversation ($_conversationId) at hotel ($_hotelId).');
+       FirebaseFirestore.instance.collection('hotels').doc(_hotelId!).collection('receptionists').where('name', isEqualTo: _receptionistName!).get().then((snap) {
+          if (snap.docs.isNotEmpty) {
+            snap.docs.first.reference.update({'isAvailable': true, 'currentConversationId': null});
+          }
+        }).catchError((e) {
+           print('ERREUR lors de la libération du réceptionniste dans dispose: $e');
         });
+
+       FirebaseFirestore.instance
+            .collection('conversations')
+            .doc(_conversationId!)
+            .update({
+              'assignedReceptionist': null,
+              'isEscalated': false
+            }).catchError((e) {
+               print('ERREUR lors de la mise à jour de la conversation dans dispose: $e');
+            });
+
+    } else {
+       print('DEBUG ReceptionistScreen: Disposing, but conversationId, receptionistName, or hotelId is null. Cannot free receptionist.');
+    }
+  }
+
+  void _onUserTypingStart() async {
+     if (_conversationId == null || _receptionistName == null) return;
+
+    String senderName = _receptionistName!;
+    final snap = await FirebaseFirestore.instance
+        .collection('conversations')
+        .doc(_conversationId!)
+        .collection('messages')
+        .where('isTyping', isEqualTo: true)
+        .where('senderName', isEqualTo: senderName)
+        .get();
+    if (snap.docs.isEmpty) {
+      await FirebaseFirestore.instance
+          .collection('conversations')
+          .doc(_conversationId!)
+          .collection('messages')
+          .add({
+        'isTyping': true,
+        'isUser': false,
+        'timestamp': FieldValue.serverTimestamp(),
+        'senderName': senderName,
+      });
+    }
+  }
+
+  void _onUserTypingStop() async {
+     if (_conversationId == null || _receptionistName == null) return;
+
+    String senderName = _receptionistName!;
+    final snap = await FirebaseFirestore.instance
+        .collection('conversations')
+        .doc(_conversationId!)
+        .collection('messages')
+        .where('isTyping', isEqualTo: true)
+        .where('senderName', isEqualTo: senderName)
+        .get();
+    for (var doc in snap.docs) {
+      await doc.reference.delete();
+    }
   }
 }
 
-// Remplacer la fonction navigateToUrl par :
+class ChatMessage {
+  final String text;
+  final bool isUser;
+  final bool isTemporary;
+  final bool hasButtons;
+  final String? senderName;
+  final bool isTyping;
+
+  ChatMessage({required this.text, required this.isUser, this.isTemporary = false, this.hasButtons = false, this.senderName, this.isTyping = false});
+}
+
+Future<void> libererReceptionniste(String hotelId, String receptionistId) async {
+  await FirebaseFirestore.instance
+      .collection('hotels')
+      .doc(hotelId)
+      .collection('receptionists')
+      .doc(receptionistId)
+      .update({
+        'isAvailable': true,
+        'currentConversationId': null,
+      });
+}
+
+class AnimatedDots extends StatefulWidget {
+  final String sender;
+  AnimatedDots({required this.sender});
+  @override
+  _AnimatedDotsState createState() => _AnimatedDotsState();
+}
+
+class _AnimatedDotsState extends State<AnimatedDots> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<int> _dotCount;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: Duration(milliseconds: 900),
+      vsync: this,
+    )..repeat();
+    _dotCount = StepTween(begin: 1, end: 3).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.linear),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _dotCount,
+      builder: (context, child) {
+        String dots = '.' * _dotCount.value;
+        return Text('${widget.sender} est en train d\'écrire$dots', style: TextStyle(color: Colors.white, fontSize: 16));
+      },
+    );
+  }
+}
+
 void navigateToUrl(String url) async {
   final Uri uri = Uri.parse(url);
   if (await canLaunchUrl(uri)) {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'receptionist_screen.dart';
+import 'package:go_router/go_router.dart';
 
 class ReceptionistAuthScreen extends StatefulWidget {
   const ReceptionistAuthScreen({Key? key}) : super(key: key);
@@ -15,33 +16,38 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
   String? _error;
   bool _obscurePassword = true;
 
-  String? _conversationId;
-  String? _receptionistName;
-
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final args = ModalRoute.of(context)?.settings.arguments as Map<String, String>?;
-      if (args != null) {
-        setState(() {
-          _conversationId = args['conversationId'];
-          _receptionistName = args['receptionistName'];
-        });
-        print('DEBUG ReceptionistAuthScreen: Arguments de route reçus - conversationId: $_conversationId, receptionistName: $_receptionistName');
-      } else {
-        setState(() {
-           _error = "Informations de conversation manquantes.";
-           print('DEBUG ReceptionistAuthScreen: Arguments de route manquants!');
-        });
-      }
-    });
+    final goRouterState = GoRouterState.of(context);
+    final conversationId = goRouterState.pathParameters['conversationId'];
+    final receptionistName = goRouterState.uri.queryParameters['receptionistName'];
+    final hotelId = goRouterState.uri.queryParameters['hotelId'];
+
+    print('DEBUG ReceptionistAuthScreen: initState appelé. conversationId: $conversationId, receptionistName: $receptionistName, hotelId: $hotelId');
+
+    if (conversationId == null || conversationId.isEmpty || receptionistName == null || receptionistName.isEmpty || hotelId == null || hotelId.isEmpty) {
+       setState(() {
+          _error = "Les informations nécessaires à l\'authentification sont manquantes dans l\'URL.";
+          _isLoading = false;
+       });
+       print('DEBUG ReceptionistAuthScreen: Paramètres manquants dans l\'URL.');
+       return;
+    }
   }
 
   Future<void> _authenticate() async {
-    if (_receptionistName == null || _conversationId == null) {
+    final goRouterState = GoRouterState.of(context);
+    final conversationId = goRouterState.pathParameters['conversationId'];
+    final receptionistName = goRouterState.uri.queryParameters['receptionistName'];
+    final hotelId = goRouterState.uri.queryParameters['hotelId'];
+
+    print('DEBUG ReceptionistAuthScreen: Authenticate appelé. conversationId: $conversationId, receptionistName: $receptionistName, hotelId: $hotelId');
+
+    if (receptionistName == null || conversationId == null || conversationId.isEmpty || hotelId == null || hotelId.isEmpty) {
        setState(() {
-          _error = "Les informations nécessaires à l\'authentification sont manquantes.";
+          _error = "Les informations nécessaires à l\'authentification sont manquantes dans l\'URL.";
+          _isLoading = false;
        });
        return;
     }
@@ -49,6 +55,7 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
     if (_passwordController.text.isEmpty) {
       setState(() {
         _error = "Veuillez entrer votre mot de passe";
+        _isLoading = false;
       });
       return;
     }
@@ -61,12 +68,12 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
     try {
       final receptionistQuery = await FirebaseFirestore.instance
           .collectionGroup('receptionists')
-          .where('name', isEqualTo: _receptionistName)
+          .where('name', isEqualTo: receptionistName)
           .get();
 
       if (receptionistQuery.docs.isEmpty) {
         setState(() {
-          _error = "Réceptionniste non trouvé ou lien invalide";
+          _error = "Réceptionniste non trouvé ou nom dans l\'URL invalide";
           _isLoading = false;
         });
         return;
@@ -75,9 +82,9 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
       final receptionistDoc = receptionistQuery.docs.first;
       final receptionistData = receptionistDoc.data();
 
-      if (receptionistData['name'] != _receptionistName) {
+      if (receptionistData['name'] != receptionistName) {
         setState(() {
-          _error = "Ce lien est réservé à ${_receptionistName}. Veuillez utiliser vos propres identifiants.";
+          _error = "Ce lien est réservé à ${receptionistName}. Veuillez utiliser vos propres identifiants.";
           _isLoading = false;
         });
         return;
@@ -91,18 +98,12 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
         return;
       }
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ReceptionistScreen(
-            conversationId: _conversationId!,
-            receptionistName: _receptionistName!,
-          ),
-        ),
-      );
+      print('DEBUG ReceptionistAuthScreen: Authentification réussie. Navigation vers ReceptionistScreen.');
+      context.go('/receptionniste/chat/$conversationId?receptionistName=${Uri.encodeComponent(receptionistName)}&hotelId=${Uri.encodeComponent(hotelId)}');
+
     } catch (e) {
       setState(() {
-        _error = "Une erreur est survenue lors de l\'authentification.";
+        _error = "Une erreur est survenue lors de l\'authentification: ${e}";
         _isLoading = false;
       });
       print('Erreur d\'authentification: $e');
@@ -111,8 +112,12 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_receptionistName == null || _conversationId == null) {
-      return Scaffold(
+    final goRouterState = GoRouterState.of(context);
+    final receptionistName = goRouterState.uri.queryParameters['receptionistName'];
+    final hotelId = goRouterState.uri.queryParameters['hotelId'];
+
+    if (receptionistName == null || receptionistName.isEmpty || hotelId == null || hotelId.isEmpty) {
+       return Scaffold(
         body: Center(
           child: _error != null ? Text(_error!, style: TextStyle(color: Colors.red)) : CircularProgressIndicator()
         ),
@@ -171,7 +176,7 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
                     ),
                     SizedBox(height: 8),
                     Text(
-                      _receptionistName!,
+                      receptionistName,
                       style: TextStyle(
                         fontSize: 18,
                         color: Colors.white70,

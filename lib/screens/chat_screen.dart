@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hotix_assistant/screens/receptionist_auth_screen.dart';
+import 'package:go_router/go_router.dart';
 
 class ChatScreen extends StatefulWidget {
   // ... (existing code)
@@ -26,15 +27,7 @@ class _ChatScreenState extends State<ChatScreen> {
       final receptionistName = uri.queryParameters['receptionistName'];
 
       if (conversationId != null && receptionistName != null) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ReceptionistAuthScreen(
-              conversationId: conversationId,
-              receptionistName: Uri.decodeComponent(receptionistName),
-            ),
-          ),
-        );
+        context.go('/receptionniste-auth/$conversationId?receptionistName=${Uri.encodeComponent(receptionistName)}');
       }
     } catch (e) {
       print('Erreur lors du traitement du lien: $e');
@@ -43,7 +36,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Sécurité supplémentaire : forcer l'authentification réceptionniste si besoin
+    // Supprimer la logique de vérification d'URL et de retour direct de ReceptionnistAuthScreen
+    // Cette logique est maintenant gérée par le redirector de go_router dans main.dart.
+    /*
     if (Uri.base.queryParameters['role'] == 'receptionist') {
       final conversationId = Uri.base.pathSegments.length >= 2 && Uri.base.pathSegments[0] == 'conversation'
           ? Uri.base.pathSegments[1]
@@ -56,6 +51,25 @@ class _ChatScreenState extends State<ChatScreen> {
         );
       }
     }
+    */
     // ... (existing code)
+  }
+
+  Future<void> _showErrorDialog(String message) async {
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Text('Erreur'),
+        content: Text(message),
+        actions: [
+          ElevatedButton(
+            // Utiliser context.go() pour la navigation interne (retour à la page d'accueil)
+            onPressed: () => context.go('/'), // Naviguer vers la route par défaut (accueil)
+            child: Text('Retour'),
+          ),
+        ],
+      ),
+    );
   }
 } 

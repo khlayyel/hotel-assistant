@@ -17,6 +17,7 @@ import 'config/platform_config.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'screens/receptionist_auth_screen.dart';
 import 'screens/login_admin_screen.dart';
+import 'package:go_router/go_router.dart';
 
 void main() async {
   print('DEBUG: main() started');
@@ -41,72 +42,123 @@ void main() async {
     });
   }
   
-  runApp(HotelChatbotApp());
+  // Définir le GoRouter
+  final _router = GoRouter(
+    routes: [
+      GoRoute(
+        path: '/',
+        builder: (context, state) => ChooseRoleScreen(),
+      ),
+      GoRoute(
+        path: '/admin-login',
+        builder: (context, state) => LoginAdminScreen(),
+      ),
+      // Route pour l'authentification réceptionniste avec ID de conversation dans le chemin
+      GoRoute(
+        path: '/receptionniste-auth/:conversationId',
+        builder: (context, state) {
+          // Récupérer les paramètres de l'URL en utilisant state.uri.queryParameters
+          final conversationId = state.pathParameters['conversationId'];
+          final receptionistName = state.uri.queryParameters['receptionistName'];
+
+          // Vérifier la présence des paramètres nécessaires
+          if (conversationId != null && conversationId.isNotEmpty && receptionistName != null && receptionistName.isNotEmpty) {
+            print('DEBUG GoRouter: Routage vers ReceptionistAuthScreen avec conversationId: $conversationId, receptionistName: $receptionistName');
+             // Passer les paramètres à l'écran d'authentification
+            return ReceptionistAuthScreen(); // L'écran lira les paramètres via GoRouterState
+          } else {
+            // Si les paramètres sont manquants, rediriger vers l'écran de choix de rôle
+            // Corriger les caractères non-ASCII dans la chaîne de caractères
+            print('DEBUG GoRouter: Paramètres manquants pour authentification réceptionniste. Redirection vers /.');
+            // Rediriger vers la route par défaut
+            return ChooseRoleScreen(); // Ou un écran d'erreur approprié
+          }
+        },
+      ),
+      // Route pour l'écran de chat du réceptionniste (après authentification)
+       GoRoute(
+        path: '/receptionniste/chat/:conversationId',
+        builder: (context, state) {
+           // Récupérer les paramètres de l'URL en utilisant state.uri.queryParameters
+          final conversationId = state.pathParameters['conversationId'];
+          // Lire receptionistName et hotelId depuis les paramètres de requête
+          final receptionistName = state.uri.queryParameters['receptionistName'];
+           final hotelId = state.uri.queryParameters['hotelId'];
+
+          // Vérifier si les paramètres sont présents pour afficher l'écran de chat
+          // Inclure hotelId dans la vérification
+          if (conversationId != null && conversationId.isNotEmpty && receptionistName != null && receptionistName.isNotEmpty && hotelId != null && hotelId.isNotEmpty) {
+             // Corriger les caractères non-ASCII dans la chaîne de caractères
+             print('DEBUG GoRouter: Routage vers ReceptionistScreen avec conversationId: $conversationId');
+             // On ne passe plus les paramètres via le constructeur
+             return ReceptionistScreen(); // L'écran lira les paramètres via GoRouterState
+          } else {
+               // Corriger les caractères non-ASCII dans la chaîne de caractères
+              print('DEBUG GoRouter: ConversationId, ReceptionistName ou HotelId manquant pour l\'écran Réceptionniste. Redirection vers /.');
+              return ChooseRoleScreen(); // Rediriger si manque d\'info
+          }
+        },
+      ),
+       // TODO: Ajouter la route pour l'écran de chat client si nécessaire (e.g., '/chat')
+        // Si le client accède directement sans lien spécifique (via le bouton "Se connecter en tant que client"),
+        // la logique de création de conversation se fait dans ChatScreen.
+         GoRoute(
+           path: '/chat',
+           builder: (context, state) => ChatScreen(),
+         ),
+       // TODO: Ajouter la route pour l'écran de gestion des hôtels (admin)
+        GoRoute(
+          path: '/gestion-hotels',
+          builder: (context, state) => GestionHotelsScreen(),
+        ),
+    ],
+    // Redirection initiale pour gérer l'URL d'entrée (web)
+    redirect: (context, state) {
+       // Corriger les caractères non-ASCII dans la chaîne de caractères
+       print('DEBUG GoRouter: Redirector appelé. path: ${state.uri.path}, query: ${state.uri.query}');
+       // Si l'URL correspond au schéma de la conversation réceptionniste
+        if (state.uri.pathSegments.length >= 2 && state.uri.pathSegments[0] == 'conversation' && state.uri.queryParameters.containsKey('role') && state.uri.queryParameters['role'] == 'receptionist') {
+           final conversationId = state.uri.pathSegments[1];
+           final receptionistName = state.uri.queryParameters['receptionistName'];
+           final hotelId = state.uri.queryParameters['hotelId']; // Lire hotelId dans le redirector
+
+           // Inclure hotelId dans la condition de redirection
+           if (conversationId.isNotEmpty && receptionistName != null && receptionistName.isNotEmpty && hotelId != null && hotelId.isNotEmpty) {
+               // Corriger les caractères non-ASCII dans la chaîne de caractères
+               print('DEBUG GoRouter: Redirection détectée pour URL réceptionniste. Redirige vers /receptionniste-auth/$conversationId?receptionistName=${Uri.encodeComponent(receptionistName)}&hotelId=${Uri.encodeComponent(hotelId)}');
+               // Rediriger vers la route d'authentification avec les paramètres appropriés
+               // Inclure hotelId dans la redirection
+               return '/receptionniste-auth/$conversationId?receptionistName=${Uri.encodeComponent(receptionistName)}&hotelId=${Uri.encodeComponent(hotelId)}';
+           }
+        }
+
+       // Pas de redirection nécessaire pour les autres routes par défaut
+       print('DEBUG GoRouter: Pas de redirection nécessaire pour ${state.uri.path}');
+      return null; // Laisse GoRouter naviguer vers la route correspondante
+    },
+
+  );
+
+  runApp(HotelChatbotApp(router: _router)); // Passer l'instance _router au widget HotelChatbotApp
 }
 
 class HotelChatbotApp extends StatelessWidget {
+  // Ajouter un paramètre pour recevoir l'instance du routeur
+  final GoRouter router;
+
+  const HotelChatbotApp({Key? key, required this.router}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     print('DEBUG HotelChatbotApp: build appelé');
     print('DEBUG HotelChatbotApp: Uri.base est ${Uri.base}');
-    // Utilisation du routage nommé pour gérer les différentes URLs
-    return MaterialApp(
+    // Utiliser MaterialApp.router avec go_router
+    return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       title: 'Système de Chat Intelligent pour Hôtels',
       theme: ThemeData.dark(),
-      // home: initialScreen, // Remplacé par l'utilisation de initialRoute et routes
-      // Utiliser '/' comme initialRoute par défaut. onGenerateRoute gérera l'URL réelle.
-      initialRoute: '/',
-      onGenerateRoute: (settings) {
-        print('DEBUG HotelChatbotApp: onGenerateRoute appelé pour ${settings.name}');
-        Uri uri;
-        try {
-          // settings.name devrait déjà contenir le chemin de l'URL réelle, comme /conversation/ID
-          uri = Uri.parse(settings.name!);
-        } catch (e) {
-           print('DEBUG HotelChatbotApp: Erreur de parsing URI pour ${settings.name}: ${e}');
-           // En cas d'erreur de parsing, rediriger vers la page d'accueil par défaut
-           return MaterialPageRoute(builder: (context) => ChooseRoleScreen());
-        }
-
-        print('DEBUG HotelChatbotApp: URI parsée: ${uri.toString()}');
-        final pathSegments = uri.pathSegments;
-        final queryParameters = uri.queryParameters;
-
-        final bool isConversationPath = pathSegments.length >= 2 && pathSegments[0] == 'conversation';
-        final String? conversationIdFromUrl = isConversationPath ? pathSegments[1] : null;
-        final String? role = queryParameters['role'];
-        final String? receptionistName = queryParameters['receptionistName'];
-
-        // Correction des caractères spéciaux et guillemets dans la ligne de print
-        print("DEBUG HotelChatbotApp: Paramètres d'URL détectés dans onGenerateRoute - path: ${uri.path}, role: $role, conversationId: $conversationIdFromUrl, receptionistName: $receptionistName");
-
-        // Si c'est l'URL de la conversation réceptionniste avec les paramètres requis
-        if (isConversationPath && conversationIdFromUrl != null && conversationIdFromUrl.isNotEmpty && role == 'receptionist' && receptionistName != null && receptionistName.isNotEmpty) {
-          print('DEBUG HotelChatbotApp: Rôle réceptionniste détecté avec paramètres valides. Routage vers /receptionniste-auth');
-          // Passer les paramètres comme arguments à la route /receptionniste-auth
-          return MaterialPageRoute(
-            settings: RouteSettings(
-              name: '/receptionniste-auth',
-              arguments: {
-                'conversationId': conversationIdFromUrl,
-                'receptionistName': receptionistName,
-              },
-            ),
-            builder: (context) => ReceptionistAuthScreen(),
-          );
-        }
-
-        // Route par défaut si aucune autre correspondance
-        print('DEBUG HotelChatbotApp: Aucune route spécifique ne correspond. Routage vers / (ChooseRoleScreen)');
-        return MaterialPageRoute(builder: (context) => ChooseRoleScreen());
-      },
-      routes: { // Définition des routes nommées principales
-         '/': (context) => ChooseRoleScreen(), // Route par défaut explicite
-         '/admin-login': (context) => LoginAdminScreen(),
-         '/receptionniste-auth': (context) => ReceptionistAuthScreen(), // Définir la route pour l'authentification réceptionniste
-         //'/chat': (context) => ChatScreen(), // ChatScreen sera navigué après authentification ou sélection de rôle
-      },
+      // Utiliser le routeur passé en paramètre
+      routerConfig: router, // Utiliser routerConfig au lieu de routerDelegate, etc.
     );
   }
 }

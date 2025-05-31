@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
 import '../screens/choose_role_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:go_router/go_router.dart';
 
 class PlatformConfig {
   static Future<void> navigateToUrl(String url, BuildContext context) async {
@@ -22,11 +23,8 @@ class PlatformConfig {
         throw 'Impossible d\'ouvrir $url';
       }
     } else {
-      // Sur mobile, on navigue vers ChooseRoleScreen
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => ChooseRoleScreen()),
-      );
+      // Sur mobile, on navigue vers ChooseRoleScreen en utilisant go_router
+      context.go('/'); // Naviguer vers la route par défaut (accueil)
     }
   }
 
