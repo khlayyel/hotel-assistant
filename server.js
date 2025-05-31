@@ -88,7 +88,9 @@ app.post('/api/sendNotification', async (req, res) => {
     for (const email of emails) {
       console.log(`[${new Date().toISOString()}] Début envoi mail à ${email}`);
       const start = Date.now();
-      const conversationLink = `${process.env.WEB_APP_URL}/conversation/${conversationId}?role=receptionist&receptionistName=${encodeURIComponent(receptionistName)}&hotelId=${encodeURIComponent(hotelId)}`;
+      const conversationLink = `https://hotel-assistant-jdlid.vercel.app/conversation/${conversationId}?role=receptionist&receptionistName=${encodeURIComponent(receptionistName)}&hotelId=${encodeURIComponent(hotelId)}`;
+      console.log("DEBUG WEB_APP_URL:", process.env.WEB_APP_URL);
+      console.log("DEBUG conversationLink:", conversationLink);
       await transporter.sendMail({
         from: process.env.EMAIL_USER,
         to: email,
