@@ -908,7 +908,7 @@ Voici l'historique :
           final emailsList = doc['emails'] as List<dynamic>;
           final receptionistName = doc['name'] as String?;
           if (receptionistName != null && receptionistName.isNotEmpty && emailsList.isNotEmpty) {
-            final conversationLink = '${Environment.webAppUrl}/conversation/$_conversationId?role=receptionist&receptionistName=${Uri.encodeComponent(receptionistName)}';
+            final conversationLink = '${Environment.webAppUrl}/conversation/$_conversationId?role=receptionist&receptionistName=${Uri.encodeComponent(receptionistName)}&hotelId=${Uri.encodeComponent(_selectedHotelId ?? '')}';
             final List<String> emails = [];
             for (var emailObj in emailsList) {
               final email = emailObj['address'] as String?;
