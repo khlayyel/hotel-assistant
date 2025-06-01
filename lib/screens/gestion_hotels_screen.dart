@@ -7,7 +7,7 @@ class GestionHotelsScreen extends StatefulWidget {
   _GestionHotelsScreenState createState() => _GestionHotelsScreenState();
 }
 
-class _GestionHotelsScreenState extends State<GestionHotelsScreen> {
+class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTickerProviderStateMixin {
   final TextEditingController _hotelController = TextEditingController();
   final TextEditingController _receptionistEmailController = TextEditingController();
   final TextEditingController _receptionistNameController = TextEditingController();
@@ -23,12 +23,23 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> {
   bool _hotelExists = false;
   bool _showAddReceptionistForm = false;
   bool _showSuggestions = false;
+  List<Map<String, dynamic>> _allHotels = [];
+
+  // Pour la gestion des admins
+  TabController? _tabController;
+  List<Map<String, dynamic>> _admins = [];
+  final TextEditingController _adminUsernameController = TextEditingController();
+  final TextEditingController _adminPasswordController = TextEditingController();
+  bool _showAddAdminForm = false;
 
   @override
   void initState() {
     super.initState();
     _searchController.addListener(_filterReceptionists);
     _hotelController.addListener(_onHotelInputChanged);
+    _loadAllHotels();
+    _tabController = TabController(length: 2, vsync: this);
+    _loadAdmins();
   }
 
   @override
@@ -38,6 +49,9 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> {
     _receptionistEmailController.dispose();
     _receptionistNameController.dispose();
     _receptionistPasswordController.dispose();
+    _tabController?.dispose();
+    _adminUsernameController.dispose();
+    _adminPasswordController.dispose();
     super.dispose();
   }
 
@@ -755,6 +769,125 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> {
     );
   }
 
+  Future<void> _loadAllHotels() async {
+    final querySnapshot = await _firestore
+        .collection('hotels')
+        .orderBy('name')
+        .get();
+    setState(() {
+      _allHotels = querySnapshot.docs
+          .map((doc) => {'id': doc.id, 'name': doc['name']})
+          .toList();
+    });
+  }
+
+  Future<void> _loadAdmins() async {
+    final querySnapshot = await _firestore.collection('admins').get();
+    setState(() {
+      _admins = querySnapshot.docs.map((doc) => {
+        'id': doc.id,
+        ...doc.data(),
+      }).toList();
+    });
+  }
+
+  Future<void> _addAdmin() async {
+    final username = _adminUsernameController.text.trim();
+    final password = _adminPasswordController.text.trim();
+    if (username.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Tous les champs sont obligatoires')),
+      );
+      return;
+    }
+    try {
+      await _firestore.collection('admins').add({
+        'username': username,
+        'password': password,
+      });
+      _adminUsernameController.clear();
+      _adminPasswordController.clear();
+      setState(() { _showAddAdminForm = false; });
+      await _loadAdmins();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Admin ajouté avec succès')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur lors de l\'ajout de l\'admin')),
+      );
+    }
+  }
+
+  Future<void> _deleteAdmin(String adminId) async {
+    try {
+      await _firestore.collection('admins').doc(adminId).delete();
+      await _loadAdmins();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Admin supprimé avec succès')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur lors de la suppression de l\'admin')),
+      );
+    }
+  }
+
+  Future<void> _editAdmin(Map<String, dynamic> admin) async {
+    final TextEditingController usernameController = TextEditingController(text: admin['username']);
+    final TextEditingController passwordController = TextEditingController(text: admin['password']);
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Modifier l\'admin'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: usernameController,
+              decoration: InputDecoration(labelText: 'Nom d\'utilisateur'),
+            ),
+            SizedBox(height: 16),
+            TextField(
+              controller: passwordController,
+              decoration: InputDecoration(labelText: 'Mot de passe'),
+              obscureText: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final newUsername = usernameController.text.trim();
+              final newPassword = passwordController.text.trim();
+              if (newUsername.isEmpty || newPassword.isEmpty) return;
+              try {
+                await _firestore.collection('admins').doc(admin['id']).update({
+                  'username': newUsername,
+                  'password': newPassword,
+                });
+                await _loadAdmins();
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Admin modifié avec succès')),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Erreur lors de la modification de l\'admin')),
+                );
+              }
+            },
+            child: Text('Modifier'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -770,279 +903,398 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> {
             );
           },
         ),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: [
+            Tab(text: 'Hôtels'),
+            Tab(text: 'Admins'),
+          ],
+        ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Card(
-              elevation: 4,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Stack(
-                  children: [
-                    Column(
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          // Onglet Hôtels
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Card(
+                  elevation: 4,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Stack(
                       children: [
-                        TextField(
-                          controller: _hotelController,
-                          decoration: InputDecoration(
-                            labelText: 'Entrer le nom de l\'hôtel',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.hotel),
-                          ),
-                        ),
-                        if (_showSuggestions && _hotelSuggestions.isNotEmpty)
-                          Container(
-                            margin: EdgeInsets.only(top: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              border: Border.all(color: Colors.blueAccent),
-                              borderRadius: BorderRadius.circular(8),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black12,
-                                  blurRadius: 4,
-                                  offset: Offset(0, 2),
+                        Column(
+                          children: [
+                            if (_allHotels.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 12.0),
+                                child: DropdownButtonFormField<String>(
+                                  value: _selectedHotelId,
+                                  isExpanded: true,
+                                  items: _allHotels.map((hotel) {
+                                    return DropdownMenuItem<String>(
+                                      value: hotel['id'],
+                                      child: Text(hotel['name']),
+                                    );
+                                  }).toList(),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedHotelId = value;
+                                      final selected = _allHotels.firstWhere((h) => h['id'] == value);
+                                      _selectedHotelName = selected['name'];
+                                      _hotelController.text = selected['name'];
+                                    });
+                                  },
+                                  decoration: InputDecoration(
+                                    labelText: "Sélectionner un hôtel",
+                                    border: OutlineInputBorder(),
+                                    prefixIcon: Icon(Icons.hotel),
+                                  ),
                                 ),
-                              ],
+                              ),
+                            TextField(
+                              controller: _hotelController,
+                              decoration: InputDecoration(
+                                labelText: 'Entrer le nom de l\'hôtel',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.hotel),
+                              ),
                             ),
-                            child: ListView.builder(
-                              shrinkWrap: true,
-                              itemCount: _hotelSuggestions.length,
-                              itemBuilder: (context, index) {
-                                final hotel = _hotelSuggestions[index];
-                                return ListTile(
-                                  title: Text(hotel['name']),
-                                  onTap: () => _selectHotelSuggestion(hotel),
-                                );
-                              },
+                            if (_showSuggestions && _hotelSuggestions.isNotEmpty)
+                              Container(
+                                margin: EdgeInsets.only(top: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  border: Border.all(color: Colors.blueAccent),
+                                  borderRadius: BorderRadius.circular(8),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black12,
+                                      blurRadius: 4,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: ListView.builder(
+                                  shrinkWrap: true,
+                                  itemCount: _hotelSuggestions.length,
+                                  itemBuilder: (context, index) {
+                                    final hotel = _hotelSuggestions[index];
+                                    return ListTile(
+                                      title: Text(hotel['name']),
+                                      onTap: () => _selectHotelSuggestion(hotel),
+                                    );
+                                  },
+                                ),
+                              ),
+                            SizedBox(height: 16),
+                            ElevatedButton.icon(
+                              onPressed: _searchHotel,
+                              icon: Icon(Icons.search),
+                              label: Text('Rechercher'),
+                              style: ElevatedButton.styleFrom(
+                                padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                              ),
                             ),
-                          ),
-                        SizedBox(height: 16),
-                        ElevatedButton.icon(
-                          onPressed: _searchHotel,
-                          icon: Icon(Icons.search),
-                          label: Text('Rechercher'),
-                          style: ElevatedButton.styleFrom(
-                            padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                          ),
+                          ],
                         ),
                       ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            if (_selectedHotelName != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Hôtel: $_selectedHotelName',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue,
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: Icon(Icons.edit, color: Colors.blue),
-                          onPressed: _editHotel,
-                          tooltip: 'Modifier l\'hôtel',
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.delete, color: Colors.red),
-                          onPressed: _deleteHotel,
-                          tooltip: 'Supprimer l\'hôtel',
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            SizedBox(height: 16),
-            if (_isLoading)
-              Center(child: CircularProgressIndicator())
-            else if (_hotelExists) ...[
-              Card(
-                elevation: 4,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      labelText: 'Rechercher un réceptionniste',
-                      hintText: 'Rechercher par nom ou email',
-                      prefixIcon: Icon(Icons.search),
-                      border: OutlineInputBorder(),
                     ),
                   ),
                 ),
-              ),
-              SizedBox(height: 16),
-              Expanded(
-                child: Card(
-                  elevation: 4,
-                  child: Column(
-                    children: [
-                      if (_filteredReceptionists.isEmpty)
-                        Expanded(
-                          child: Center(
-                            child: Text(
-                              'Aucun réceptionniste pour cet hôtel',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey,
+                if (_selectedHotelName != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Hôtel: $_selectedHotelName',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue,
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: Icon(Icons.edit, color: Colors.blue),
+                              onPressed: _editHotel,
+                              tooltip: 'Modifier l\'hôtel',
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.delete, color: Colors.red),
+                              onPressed: _deleteHotel,
+                              tooltip: 'Supprimer l\'hôtel',
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                SizedBox(height: 16),
+                if (_isLoading)
+                  Center(child: CircularProgressIndicator())
+                else if (_hotelExists) ...[
+                  Card(
+                    elevation: 4,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          labelText: 'Rechercher un réceptionniste',
+                          hintText: 'Rechercher par nom ou email',
+                          prefixIcon: Icon(Icons.search),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  Expanded(
+                    child: Card(
+                      elevation: 4,
+                      child: Column(
+                        children: [
+                          if (_filteredReceptionists.isEmpty)
+                            Expanded(
+                              child: Center(
+                                child: Text(
+                                  'Aucun réceptionniste pour cet hôtel',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.grey,
+                                  ),
+                                ),
                               ),
                             ),
+                          if (_filteredReceptionists.isEmpty || _filteredReceptionists.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                children: [
+                                  if (!_showAddReceptionistForm)
+                                    ElevatedButton.icon(
+                                      onPressed: () {
+                                        setState(() {
+                                          _showAddReceptionistForm = true;
+                                          _receptionistNameController.clear();
+                                        });
+                                      },
+                                      icon: Icon(Icons.add),
+                                      label: Text('Ajouter un réceptionniste'),
+                                    ),
+                                  if (_showAddReceptionistForm) ...[
+                                    TextField(
+                                      controller: _receptionistNameController,
+                                      decoration: InputDecoration(
+                                        labelText: 'Nom du réceptionniste',
+                                        border: OutlineInputBorder(),
+                                        prefixIcon: Icon(Icons.person),
+                                      ),
+                                    ),
+                                    SizedBox(height: 8),
+                                    TextField(
+                                      controller: _receptionistEmailController,
+                                      decoration: InputDecoration(
+                                        labelText: 'Email du réceptionniste (obligatoire)',
+                                        border: OutlineInputBorder(),
+                                        prefixIcon: Icon(Icons.email),
+                                      ),
+                                      keyboardType: TextInputType.emailAddress,
+                                    ),
+                                    SizedBox(height: 8),
+                                    TextField(
+                                      controller: _receptionistPasswordController,
+                                      decoration: InputDecoration(
+                                        labelText: 'Mot de passe (minimum 6 caractères)',
+                                        border: OutlineInputBorder(),
+                                        prefixIcon: Icon(Icons.lock),
+                                      ),
+                                      obscureText: true,
+                                    ),
+                                    SizedBox(height: 8),
+                                    ElevatedButton.icon(
+                                      onPressed: _addReceptionist,
+                                      icon: Icon(Icons.check),
+                                      label: Text('Valider'),
+                                    ),
+                                    SizedBox(height: 8),
+                                    TextButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          _showAddReceptionistForm = false;
+                                          _receptionistNameController.clear();
+                                          _receptionistEmailController.clear();
+                                          _receptionistPasswordController.clear();
+                                        });
+                                      },
+                                      child: Text('Annuler'),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          if (_filteredReceptionists.isNotEmpty)
+                            Expanded(
+                              child: ListView.builder(
+                                itemCount: _filteredReceptionists.length,
+                                itemBuilder: (context, index) {
+                                  final receptionist = _filteredReceptionists[index];
+                                  return ExpansionTile(
+                                    leading: CircleAvatar(
+                                      child: Icon(Icons.person),
+                                      backgroundColor: Colors.blue[100],
+                                    ),
+                                    title: Text(receptionist['name'] ?? 'Sans nom'),
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: Icon(Icons.edit, color: Colors.blue),
+                                          onPressed: () => _editReceptionist(receptionist),
+                                          tooltip: 'Modifier',
+                                        ),
+                                        IconButton(
+                                          icon: Icon(Icons.delete, color: Colors.red),
+                                          onPressed: () => _deleteReceptionist(
+                                            receptionist['id'],
+                                            receptionist['name'] ?? 'Sans nom',
+                                          ),
+                                          tooltip: 'Supprimer',
+                                        ),
+                                      ],
+                                    ),
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.all(16.0),
+                                        child: _buildEmailsList(receptionist),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ]
+                else if (_hotelController.text.isNotEmpty)
+                  Card(
+                    elevation: 4,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        children: [
+                          Text(
+                            'Hôtel introuvable',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: Colors.red,
+                            ),
                           ),
-                        ),
-                      if (_filteredReceptionists.isEmpty || _filteredReceptionists.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            children: [
-                              if (!_showAddReceptionistForm)
-                                ElevatedButton.icon(
-                                  onPressed: () {
-                                    setState(() {
-                                      _showAddReceptionistForm = true;
-                                      _receptionistNameController.clear();
-                                    });
-                                  },
-                                  icon: Icon(Icons.add),
-                                  label: Text('Ajouter un réceptionniste'),
-                                ),
-                              if (_showAddReceptionistForm) ...[
-                                TextField(
-                                  controller: _receptionistNameController,
-                                  decoration: InputDecoration(
-                                    labelText: 'Nom du réceptionniste',
-                                    border: OutlineInputBorder(),
-                                    prefixIcon: Icon(Icons.person),
-                                  ),
-                                ),
-                                SizedBox(height: 8),
-                                TextField(
-                                  controller: _receptionistEmailController,
-                                  decoration: InputDecoration(
-                                    labelText: 'Email du réceptionniste (obligatoire)',
-                                    border: OutlineInputBorder(),
-                                    prefixIcon: Icon(Icons.email),
-                                  ),
-                                  keyboardType: TextInputType.emailAddress,
-                                ),
-                                SizedBox(height: 8),
-                                TextField(
-                                  controller: _receptionistPasswordController,
-                                  decoration: InputDecoration(
-                                    labelText: 'Mot de passe (minimum 6 caractères)',
-                                    border: OutlineInputBorder(),
-                                    prefixIcon: Icon(Icons.lock),
-                                  ),
-                                  obscureText: true,
-                                ),
-                                SizedBox(height: 8),
-                                ElevatedButton.icon(
-                                  onPressed: _addReceptionist,
-                                  icon: Icon(Icons.check),
-                                  label: Text('Valider'),
-                                ),
-                                SizedBox(height: 8),
-                                TextButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      _showAddReceptionistForm = false;
-                                      _receptionistNameController.clear();
-                                      _receptionistEmailController.clear();
-                                      _receptionistPasswordController.clear();
-                                    });
-                                  },
-                                  child: Text('Annuler'),
-                                ),
-                              ],
-                            ],
+                          SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: _addHotel,
+                            icon: Icon(Icons.add),
+                            label: Text('Ajouter Hôtel'),
+                            style: ElevatedButton.styleFrom(
+                              padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                            ),
                           ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          // Onglet Admins
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Gestion des Admins', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        setState(() { _showAddAdminForm = !_showAddAdminForm; });
+                      },
+                      icon: Icon(Icons.add),
+                      label: Text(_showAddAdminForm ? 'Annuler' : 'Ajouter un admin'),
+                    ),
+                  ],
+                ),
+                if (_showAddAdminForm)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    child: Column(
+                      children: [
+                        TextField(
+                          controller: _adminUsernameController,
+                          decoration: InputDecoration(labelText: 'Nom d\'utilisateur', border: OutlineInputBorder()),
                         ),
-                      if (_filteredReceptionists.isNotEmpty)
-                        Expanded(
-                          child: ListView.builder(
-                            itemCount: _filteredReceptionists.length,
-                            itemBuilder: (context, index) {
-                              final receptionist = _filteredReceptionists[index];
-                              return ExpansionTile(
-                                leading: CircleAvatar(
-                                  child: Icon(Icons.person),
-                                  backgroundColor: Colors.blue[100],
-                                ),
-                                title: Text(receptionist['name'] ?? 'Sans nom'),
+                        SizedBox(height: 8),
+                        TextField(
+                          controller: _adminPasswordController,
+                          decoration: InputDecoration(labelText: 'Mot de passe', border: OutlineInputBorder()),
+                          obscureText: true,
+                        ),
+                        SizedBox(height: 8),
+                        ElevatedButton.icon(
+                          onPressed: _addAdmin,
+                          icon: Icon(Icons.check),
+                          label: Text('Valider'),
+                        ),
+                      ],
+                    ),
+                  ),
+                SizedBox(height: 16),
+                Expanded(
+                  child: _admins.isEmpty
+                      ? Center(child: Text('Aucun admin'))
+                      : ListView.builder(
+                          itemCount: _admins.length,
+                          itemBuilder: (context, index) {
+                            final admin = _admins[index];
+                            return Card(
+                              child: ListTile(
+                                leading: Icon(Icons.admin_panel_settings),
+                                title: Text(admin['username'] ?? ''),
+                                subtitle: Text('Mot de passe : ${admin['password'] ?? ''}'),
                                 trailing: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     IconButton(
                                       icon: Icon(Icons.edit, color: Colors.blue),
-                                      onPressed: () => _editReceptionist(receptionist),
+                                      onPressed: () => _editAdmin(admin),
                                       tooltip: 'Modifier',
                                     ),
                                     IconButton(
                                       icon: Icon(Icons.delete, color: Colors.red),
-                                      onPressed: () => _deleteReceptionist(
-                                        receptionist['id'],
-                                        receptionist['name'] ?? 'Sans nom',
-                                      ),
+                                      onPressed: () => _deleteAdmin(admin['id']),
                                       tooltip: 'Supprimer',
                                     ),
                                   ],
                                 ),
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.all(16.0),
-                                    child: _buildEmailsList(receptionist),
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
+                              ),
+                            );
+                          },
                         ),
-                    ],
-                  ),
                 ),
-              ),
-            ]
-            else if (_hotelController.text.isNotEmpty)
-              Card(
-                elevation: 4,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      Text(
-                        'Hôtel introuvable',
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: Colors.red,
-                        ),
-                      ),
-                      SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: _addHotel,
-                        icon: Icon(Icons.add),
-                        label: Text('Ajouter Hôtel'),
-                        style: ElevatedButton.styleFrom(
-                          padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-          ],
-        ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
