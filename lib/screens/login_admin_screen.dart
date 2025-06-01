@@ -13,6 +13,7 @@ class _LoginAdminScreenState extends State<LoginAdminScreen> {
   final TextEditingController _passwordController = TextEditingController();
   bool _loading = false;
   String? _error;
+  bool _obscurePassword = true;
 
   Future<void> _login() async {
     setState(() { _loading = true; _error = null; });
@@ -95,11 +96,19 @@ class _LoginAdminScreenState extends State<LoginAdminScreen> {
                     SizedBox(height: 16),
                     TextField(
                       controller: _passwordController,
-                      obscureText: true,
+                      obscureText: _obscurePassword,
                       style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
                       decoration: InputDecoration(
                         labelText: "Mot de passe",
                         prefixIcon: Icon(Icons.lock, color: Color(0xFF0d1a36)),
+                        suffixIcon: IconButton(
+                          icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off, color: Color(0xFF0d1a36)),
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                        ),
                       ),
                     ),
                     SizedBox(height: 24),

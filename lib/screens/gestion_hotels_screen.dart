@@ -943,6 +943,7 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
             Tab(text: 'Admins'),
           ],
           labelColor: Colors.white,
+          labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
           unselectedLabelColor: Colors.black54,
         ),
       ),
@@ -1141,20 +1142,20 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
                                           final receptionist = _filteredReceptionists[index];
                                           return ExpansionTile(
                                             leading: CircleAvatar(
-                                              child: Icon(Icons.person, color: Color(0xFFe2001a)),
-                                              backgroundColor: Color(0xFFfbeaec),
+                                              child: Icon(Icons.person, color: Colors.white),
+                                              backgroundColor: Color(0xFF1976d2),
                                             ),
-                                            title: Text(receptionist['name'] ?? 'Sans nom', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                            title: Text(receptionist['name'] ?? 'Sans nom', style: TextStyle(color: Color(0xFF0d1a36), fontWeight: FontWeight.bold)),
                                             trailing: Row(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
                                                 IconButton(
-                                                  icon: Icon(Icons.edit, color: Colors.white),
+                                                  icon: Icon(Icons.edit, color: Color(0xFF1976d2)),
                                                   onPressed: () => _editReceptionist(receptionist),
                                                   tooltip: 'Modifier',
                                                 ),
                                                 IconButton(
-                                                  icon: Icon(Icons.delete, color: Colors.white),
+                                                  icon: Icon(Icons.delete, color: Color(0xFF1976d2)),
                                                   onPressed: () => _deleteReceptionist(
                                                     receptionist['id'],
                                                     receptionist['name'] ?? 'Sans nom',
@@ -1330,8 +1331,9 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
                               icon: Icon(Icons.add),
                               label: Text(_showAddAdminForm ? 'Annuler' : 'Ajouter un admin'),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Color(0xFFe2001a),
+                                backgroundColor: Color(0xFF1976d2),
                                 foregroundColor: Colors.white,
+                                textStyle: TextStyle(fontWeight: FontWeight.bold),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                               ),
                             ),
@@ -1404,19 +1406,19 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
                                   itemBuilder: (context, index) {
                                     final admin = _admins[index];
                                     return ListTile(
-                                      leading: Icon(Icons.admin_panel_settings, color: Color(0xFFe2001a)),
-                                      title: Text(admin['username'] ?? '', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                      leading: Icon(Icons.admin_panel_settings, color: Colors.white),
+                                      title: Text(admin['username'] ?? '', style: TextStyle(color: Color(0xFF0d1a36), fontWeight: FontWeight.bold, fontSize: 16)),
                                       subtitle: Text('Mot de passe : ${admin['password'] ?? ''}', style: TextStyle(color: Colors.black87)),
                                       trailing: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           IconButton(
-                                            icon: Icon(Icons.edit, color: Colors.white),
+                                            icon: Icon(Icons.edit, color: Color(0xFF1976d2), size: 26),
                                             onPressed: () => _editAdmin(admin),
                                             tooltip: 'Modifier',
                                           ),
                                           IconButton(
-                                            icon: Icon(Icons.delete, color: Colors.white),
+                                            icon: Icon(Icons.delete, color: Color(0xFF1976d2), size: 26),
                                             onPressed: () => _deleteAdmin(admin['id']),
                                             tooltip: 'Supprimer',
                                           ),
