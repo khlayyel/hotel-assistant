@@ -436,7 +436,7 @@ class ChatScreenState extends State<ChatScreen> {
                 children: [
                   Text(
                     "Veuillez choisir l'hôtel concerné. Cela nous permettra, en cas de besoin, de vous mettre en relation avec un réceptionniste de l'établissement exact que vous avez sélectionné.",
-                    style: TextStyle(fontSize: 14, color: Colors.grey[300]),
+                    style: TextStyle(fontSize: 15, color: Colors.grey[600], fontStyle: FontStyle.italic),
                   ),
                   SizedBox(height: 12),
                   TextField(
@@ -1149,9 +1149,10 @@ Voici l'historique :
                 Text(
                   sender,
                   style: TextStyle(
-                    color: Color(0xFFe2001a),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
+                    color: alignRight ? Colors.white : Color(0xFFe2001a),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    shadows: alignRight ? [Shadow(color: Colors.black26, blurRadius: 2)] : null,
                   ),
                 ),
                 SizedBox(height: 2),
