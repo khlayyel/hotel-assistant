@@ -43,19 +43,18 @@ void main() async {
 }
 
 class HotixTheme {
-  static const Color hotixRed = Color(0xFFe2001a);
-  static const Color hotixRedDark = Color(0xFFb31217);
+  static const Color hotixBlueDark = Color(0xFF0d1a36); // Bleu foncé
+  static const Color hotixBlue = Color(0xFF1a237e); // Bleu intermédiaire
+  static const Color hotixBlueLight = Color(0xFF1976d2); // Bleu clair
   static const Color hotixWhite = Color(0xFFF8F8F8);
   static const Color hotixGrey = Color(0xFF232323);
-  static const Color hotixBlue = Color(0xFF1a237e);
-  static const Color hotixBlueLight = Color(0xFF0d47a1);
 
   static ThemeData get themeData => ThemeData(
     fontFamily: 'Roboto',
-    primaryColor: hotixRed,
+    primaryColor: hotixBlueDark,
     scaffoldBackgroundColor: hotixWhite,
     appBarTheme: AppBarTheme(
-      backgroundColor: hotixRed,
+      backgroundColor: hotixBlueDark,
       foregroundColor: Colors.white,
       elevation: 0,
       centerTitle: true,
@@ -64,24 +63,24 @@ class HotixTheme {
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: Colors.white,
-      labelStyle: TextStyle(color: hotixRed, fontWeight: FontWeight.w600),
-      hintStyle: TextStyle(color: Colors.grey[600]),
+      labelStyle: TextStyle(color: hotixBlue, fontWeight: FontWeight.w600),
+      hintStyle: TextStyle(color: Colors.grey[700]),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: hotixRed, width: 1.2),
+        borderSide: BorderSide(color: hotixBlue, width: 1.2),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: hotixRed, width: 1.2),
+        borderSide: BorderSide(color: hotixBlue, width: 1.2),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: hotixRedDark, width: 2),
+        borderSide: BorderSide(color: hotixBlueDark, width: 2),
       ),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: hotixRed,
+        backgroundColor: hotixBlue,
         foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         textStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
@@ -90,7 +89,7 @@ class HotixTheme {
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
-        foregroundColor: hotixRed,
+        foregroundColor: hotixBlue,
         textStyle: TextStyle(fontWeight: FontWeight.bold),
       ),
     ),
@@ -101,10 +100,10 @@ class HotixTheme {
       margin: EdgeInsets.symmetric(vertical: 8, horizontal: 0),
     ),
     tabBarTheme: TabBarTheme(
-      labelColor: hotixRed,
-      unselectedLabelColor: Colors.grey[600],
+      labelColor: hotixBlue,
+      unselectedLabelColor: Colors.grey[700],
       indicator: UnderlineTabIndicator(
-        borderSide: BorderSide(color: hotixRed, width: 4),
+        borderSide: BorderSide(color: hotixBlue, width: 4),
       ),
     ),
   );
@@ -139,7 +138,7 @@ class HotelChatbotApp extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [HotixTheme.hotixRed, HotixTheme.hotixRedDark],
+              colors: [HotixTheme.hotixBlueDark, HotixTheme.hotixBlue],
             ),
           ),
           child: child,
@@ -436,7 +435,7 @@ class ChatScreenState extends State<ChatScreen> {
                 children: [
                   Text(
                     "Veuillez choisir l'hôtel concerné. Cela nous permettra, en cas de besoin, de vous mettre en relation avec un réceptionniste de l'établissement exact que vous avez sélectionné.",
-                    style: TextStyle(fontSize: 15, color: Colors.grey[600], fontStyle: FontStyle.italic),
+                    style: TextStyle(fontSize: 15, color: Colors.grey[700], fontStyle: FontStyle.italic),
                   ),
                   SizedBox(height: 12),
                   TextField(
@@ -1216,7 +1215,7 @@ Voici l'historique :
     }
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(title: Text("Chat Assistant"), backgroundColor: Color(0xFFe2001a)),
+      appBar: AppBar(title: Text("Chat Assistant"), backgroundColor: Color(0xFF0d1a36)),
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -1224,7 +1223,7 @@ Voici l'historique :
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFFe2001a), Color(0xFFb31217)],
+            colors: [Color(0xFF0d1a36), Color(0xFF1976d2)],
           ),
         ),
         child: Center(
@@ -1300,7 +1299,7 @@ Voici l'historique :
                             offset: Offset(0, 2),
                           ),
                         ],
-                        border: Border.all(color: Color(0xFFe2001a), width: 1.5),
+                        border: Border.all(color: Color(0xFF0d1a36), width: 1.5),
                       ),
                       child: Row(
                         children: [
@@ -1312,7 +1311,7 @@ Voici l'historique :
                               autofocus: true,
                               decoration: InputDecoration(
                                 hintText: "Écrivez votre message...",
-                                hintStyle: TextStyle(color: Colors.grey[600]),
+                                hintStyle: TextStyle(color: Colors.grey[700]),
                                 border: InputBorder.none,
                                 contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 15),
                               ),
@@ -1321,7 +1320,7 @@ Voici l'historique :
                             ),
                           ),
                           IconButton(
-                            icon: Icon(Icons.send, color: Color(0xFFe2001a)),
+                            icon: Icon(Icons.send, color: Color(0xFF0d1a36)),
                             onPressed: _sendMessage,
                           ),
                         ],
@@ -1448,7 +1447,7 @@ Voici l'historique :
         margin: EdgeInsets.only(bottom: 8),
         padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: Color(0xFFe2001a),
+          color: Color(0xFF0d1a36),
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(

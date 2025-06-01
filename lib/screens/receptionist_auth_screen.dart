@@ -92,7 +92,7 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFFe2001a), Color(0xFFb31217)],
+            colors: [Color(0xFF0d1a36), Color(0xFF1976d2)],
           ),
         ),
         child: SafeArea(
@@ -121,7 +121,7 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
                         width: 80,
                         height: 80,
                         decoration: BoxDecoration(
-                          color: Color(0xFFe2001a),
+                          color: Color(0xFF0d1a36),
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
@@ -143,7 +143,7 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFFe2001a),
+                          color: Color(0xFF0d1a36),
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -152,7 +152,7 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
                         widget.receptionistName,
                         style: TextStyle(
                           fontSize: 16,
-                          color: Colors.black87,
+                          color: Color(0xFF0d1a36),
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -160,15 +160,15 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
                       TextField(
                         controller: _passwordController,
                         obscureText: _obscurePassword,
-                        style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
+                        style: TextStyle(color: Color(0xFF0d1a36), fontWeight: FontWeight.w600),
                         decoration: InputDecoration(
                           hintText: "Mot de passe",
-                          hintStyle: TextStyle(color: Colors.grey[600]),
-                          prefixIcon: Icon(Icons.lock, color: Color(0xFFe2001a)),
+                          hintStyle: TextStyle(color: Color(0xFF1976d2)),
+                          prefixIcon: Icon(Icons.lock, color: Color(0xFF0d1a36)),
                           suffixIcon: IconButton(
                             icon: Icon(
                               _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                              color: Colors.grey,
+                              color: Color(0xFF1976d2),
                             ),
                             onPressed: () {
                               setState(() {
@@ -178,7 +178,7 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(color: Color(0xFFe2001a), width: 1.2),
+                            borderSide: BorderSide(color: Color(0xFF0d1a36), width: 1.2),
                           ),
                           filled: true,
                           fillColor: Colors.white,
@@ -189,18 +189,18 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
                         Container(
                           padding: EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.08),
+                            color: Color(0xFF1976d2).withOpacity(0.08),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.red),
+                            border: Border.all(color: Color(0xFF1976d2)),
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.error_outline, color: Colors.red),
+                              Icon(Icons.error_outline, color: Color(0xFF1976d2)),
                               SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   _error!,
-                                  style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600),
+                                  style: TextStyle(color: Color(0xFF1976d2), fontWeight: FontWeight.w600),
                                 ),
                               ),
                             ],
@@ -213,7 +213,7 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
                         child: ElevatedButton(
                           onPressed: _isLoading ? null : _authenticate,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Color(0xFFe2001a),
+                            backgroundColor: Color(0xFF0d1a36),
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                             textStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),

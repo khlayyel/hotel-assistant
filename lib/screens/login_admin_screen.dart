@@ -56,7 +56,7 @@ class _LoginAdminScreenState extends State<LoginAdminScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFFe2001a), Color(0xFFb31217)],
+            colors: [Color(0xFF0d1a36), Color(0xFF1976d2)],
           ),
         ),
         child: Center(
@@ -80,16 +80,16 @@ class _LoginAdminScreenState extends State<LoginAdminScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.admin_panel_settings, size: 48, color: Color(0xFFe2001a)),
+                    Icon(Icons.admin_panel_settings, size: 48, color: Color(0xFF0d1a36)),
                     SizedBox(height: 18),
-                    Text("Connexion Admin", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFFe2001a))),
+                    Text("Connexion Admin", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF0d1a36))),
                     SizedBox(height: 30),
                     TextField(
                       controller: _usernameController,
                       style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
                       decoration: InputDecoration(
                         labelText: "Nom d'utilisateur",
-                        prefixIcon: Icon(Icons.person, color: Color(0xFFe2001a)),
+                        prefixIcon: Icon(Icons.person, color: Color(0xFF0d1a36)),
                       ),
                     ),
                     SizedBox(height: 16),
@@ -99,7 +99,7 @@ class _LoginAdminScreenState extends State<LoginAdminScreen> {
                       style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
                       decoration: InputDecoration(
                         labelText: "Mot de passe",
-                        prefixIcon: Icon(Icons.lock, color: Color(0xFFe2001a)),
+                        prefixIcon: Icon(Icons.lock, color: Color(0xFF0d1a36)),
                       ),
                     ),
                     SizedBox(height: 24),
@@ -128,7 +128,7 @@ class _LoginAdminScreenState extends State<LoginAdminScreen> {
                       child: ElevatedButton(
                         onPressed: _loading ? null : _login,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFFe2001a),
+                          backgroundColor: Color(0xFF0d1a36),
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                           textStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),

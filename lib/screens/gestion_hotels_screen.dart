@@ -551,20 +551,24 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
               ),
             ),
             SizedBox(height: 16),
-            TextField(
-              controller: passwordController,
-              obscureText: !_showEditReceptionistPassword,
-              decoration: InputDecoration(
-                labelText: 'Mot de passe',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.lock, color: Color(0xFFe2001a)),
-                suffixIcon: IconButton(
-                  icon: Icon(_showEditReceptionistPassword ? Icons.visibility : Icons.visibility_off, color: Colors.grey),
-                  onPressed: () {
-                    setState(() { _showEditReceptionistPassword = !_showEditReceptionistPassword; });
-                  },
-                ),
-              ),
+            StatefulBuilder(
+              builder: (context, setStateDialog) {
+                return TextField(
+                  controller: passwordController,
+                  obscureText: !_showEditReceptionistPassword,
+                  decoration: InputDecoration(
+                    labelText: 'Mot de passe',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.lock, color: Color(0xFFe2001a)),
+                    suffixIcon: IconButton(
+                      icon: Icon(_showEditReceptionistPassword ? Icons.visibility : Icons.visibility_off, color: Colors.grey),
+                      onPressed: () {
+                        setStateDialog(() { _showEditReceptionistPassword = !_showEditReceptionistPassword; });
+                      },
+                    ),
+                  ),
+                );
+              },
             ),
           ],
         ),
@@ -757,12 +761,12 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
                   child: Text(email['address']),
                 ),
                 IconButton(
-                  icon: Icon(Icons.edit, size: 20, color: Colors.blue),
+                  icon: Icon(Icons.edit, color: Colors.white),
                   onPressed: () => _editEmail(receptionist['id'], email, index),
                   tooltip: 'Modifier l\'email',
                 ),
                 IconButton(
-                  icon: Icon(Icons.delete, size: 20, color: Colors.red),
+                  icon: Icon(Icons.delete, color: Colors.white),
                   onPressed: () => _deleteEmail(receptionist['id'], index),
                   tooltip: 'Supprimer l\'email',
                 ),
@@ -861,20 +865,24 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
               decoration: InputDecoration(labelText: 'Nom d\'utilisateur'),
             ),
             SizedBox(height: 16),
-            TextField(
-              controller: passwordController,
-              obscureText: !_showEditAdminPassword,
-              decoration: InputDecoration(
-                labelText: 'Mot de passe',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.lock, color: Color(0xFFe2001a)),
-                suffixIcon: IconButton(
-                  icon: Icon(_showEditAdminPassword ? Icons.visibility : Icons.visibility_off, color: Colors.grey),
-                  onPressed: () {
-                    setState(() { _showEditAdminPassword = !_showEditAdminPassword; });
-                  },
-                ),
-              ),
+            StatefulBuilder(
+              builder: (context, setStateDialog) {
+                return TextField(
+                  controller: passwordController,
+                  obscureText: !_showEditAdminPassword,
+                  decoration: InputDecoration(
+                    labelText: 'Mot de passe',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.lock, color: Color(0xFFe2001a)),
+                    suffixIcon: IconButton(
+                      icon: Icon(_showEditAdminPassword ? Icons.visibility : Icons.visibility_off, color: Colors.grey),
+                      onPressed: () {
+                        setStateDialog(() { _showEditAdminPassword = !_showEditAdminPassword; });
+                      },
+                    ),
+                  ),
+                );
+              },
             ),
           ],
         ),
@@ -918,7 +926,7 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
       backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: Text('Gestion des Hôtels'),
-        backgroundColor: Color(0xFFe2001a),
+        backgroundColor: Color(0xFF0d1a36),
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
           onPressed: () {
@@ -934,7 +942,7 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
             Tab(text: 'Hôtels'),
             Tab(text: 'Admins'),
           ],
-          labelColor: Color(0xFF232323),
+          labelColor: Colors.white,
           unselectedLabelColor: Colors.black54,
         ),
       ),
@@ -945,7 +953,7 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFFe2001a), Color(0xFFb31217)],
+            colors: [Color(0xFF0d1a36), Color(0xFF1976d2)],
           ),
         ),
         child: TabBarView(
@@ -999,7 +1007,7 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
                                       ),
                                     TextField(
                                       controller: _hotelController,
-                                      style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
+                                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
                                       decoration: InputDecoration(
                                         labelText: 'Entrer le nom de l\'hôtel',
                                         border: OutlineInputBorder(),
@@ -1062,7 +1070,7 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
-                                    color: Color(0xFF232323),
+                                    color: Colors.white,
                                   ),
                                 ),
                                 Row(
@@ -1093,7 +1101,7 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
                               padding: const EdgeInsets.all(16.0),
                               child: TextField(
                                 controller: _searchController,
-                                style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
                                 decoration: InputDecoration(
                                   labelText: 'Rechercher un réceptionniste',
                                   hintText: 'Rechercher par nom ou email',
@@ -1136,17 +1144,17 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
                                               child: Icon(Icons.person, color: Color(0xFFe2001a)),
                                               backgroundColor: Color(0xFFfbeaec),
                                             ),
-                                            title: Text(receptionist['name'] ?? 'Sans nom', style: TextStyle(color: Color(0xFF232323), fontWeight: FontWeight.bold)),
+                                            title: Text(receptionist['name'] ?? 'Sans nom', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                                             trailing: Row(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
                                                 IconButton(
-                                                  icon: Icon(Icons.edit, color: Color(0xFFe2001a)),
+                                                  icon: Icon(Icons.edit, color: Colors.white),
                                                   onPressed: () => _editReceptionist(receptionist),
                                                   tooltip: 'Modifier',
                                                 ),
                                                 IconButton(
-                                                  icon: Icon(Icons.delete, color: Colors.red),
+                                                  icon: Icon(Icons.delete, color: Colors.white),
                                                   onPressed: () => _deleteReceptionist(
                                                     receptionist['id'],
                                                     receptionist['name'] ?? 'Sans nom',
@@ -1197,7 +1205,7 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
                                         children: [
                                           TextField(
                                             controller: _receptionistNameController,
-                                            style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
+                                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
                                             decoration: InputDecoration(
                                               labelText: 'Nom du réceptionniste',
                                               border: OutlineInputBorder(),
@@ -1207,7 +1215,7 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
                                           SizedBox(height: 8),
                                           TextField(
                                             controller: _receptionistEmailController,
-                                            style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
+                                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
                                             decoration: InputDecoration(
                                               labelText: 'Email du réceptionniste (obligatoire)',
                                               border: OutlineInputBorder(),
@@ -1219,7 +1227,7 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
                                           TextField(
                                             controller: _receptionistPasswordController,
                                             obscureText: !_showReceptionistPassword,
-                                            style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
+                                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
                                             decoration: InputDecoration(
                                               labelText: 'Mot de passe (minimum 6 caractères)',
                                               border: OutlineInputBorder(),
@@ -1314,7 +1322,7 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('Gestion des Admins', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF232323))),
+                            Text('Gestion des Admins', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
                             ElevatedButton.icon(
                               onPressed: () {
                                 setState(() { _showAddAdminForm = !_showAddAdminForm; });
@@ -1341,25 +1349,29 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
                                   children: [
                                     TextField(
                                       controller: _adminUsernameController,
-                                      style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
+                                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
                                       decoration: InputDecoration(labelText: 'Nom d\'utilisateur', border: OutlineInputBorder(), prefixIcon: Icon(Icons.person, color: Color(0xFFe2001a))),
                                     ),
                                     SizedBox(height: 8),
-                                    TextField(
-                                      controller: _adminPasswordController,
-                                      obscureText: !_showAdminPassword,
-                                      style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
-                                      decoration: InputDecoration(
-                                        labelText: 'Mot de passe',
-                                        border: OutlineInputBorder(),
-                                        prefixIcon: Icon(Icons.lock, color: Color(0xFFe2001a)),
-                                        suffixIcon: IconButton(
-                                          icon: Icon(_showAdminPassword ? Icons.visibility : Icons.visibility_off, color: Colors.grey),
-                                          onPressed: () {
-                                            setState(() { _showAdminPassword = !_showAdminPassword; });
-                                          },
-                                        ),
-                                      ),
+                                    StatefulBuilder(
+                                      builder: (context, setStateDialog) {
+                                        return TextField(
+                                          controller: _adminPasswordController,
+                                          obscureText: !_showAdminPassword,
+                                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                                          decoration: InputDecoration(
+                                            labelText: 'Mot de passe',
+                                            border: OutlineInputBorder(),
+                                            prefixIcon: Icon(Icons.lock, color: Color(0xFFe2001a)),
+                                            suffixIcon: IconButton(
+                                              icon: Icon(_showAdminPassword ? Icons.visibility : Icons.visibility_off, color: Colors.grey),
+                                              onPressed: () {
+                                                setStateDialog(() { _showAdminPassword = !_showAdminPassword; });
+                                              },
+                                            ),
+                                          ),
+                                        );
+                                      },
                                     ),
                                     SizedBox(height: 8),
                                     ElevatedButton.icon(
@@ -1393,18 +1405,18 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
                                     final admin = _admins[index];
                                     return ListTile(
                                       leading: Icon(Icons.admin_panel_settings, color: Color(0xFFe2001a)),
-                                      title: Text(admin['username'] ?? '', style: TextStyle(color: Color(0xFF232323), fontWeight: FontWeight.bold)),
+                                      title: Text(admin['username'] ?? '', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                                       subtitle: Text('Mot de passe : ${admin['password'] ?? ''}', style: TextStyle(color: Colors.black87)),
                                       trailing: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           IconButton(
-                                            icon: Icon(Icons.edit, color: Color(0xFFe2001a)),
+                                            icon: Icon(Icons.edit, color: Colors.white),
                                             onPressed: () => _editAdmin(admin),
                                             tooltip: 'Modifier',
                                           ),
                                           IconButton(
-                                            icon: Icon(Icons.delete, color: Colors.red),
+                                            icon: Icon(Icons.delete, color: Colors.white),
                                             onPressed: () => _deleteAdmin(admin['id']),
                                             tooltip: 'Supprimer',
                                           ),
