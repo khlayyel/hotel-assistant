@@ -42,6 +42,74 @@ void main() async {
   runApp(HotelChatbotApp());
 }
 
+class HotixTheme {
+  static const Color hotixRed = Color(0xFFe2001a);
+  static const Color hotixRedDark = Color(0xFFb31217);
+  static const Color hotixWhite = Color(0xFFF8F8F8);
+  static const Color hotixGrey = Color(0xFF232323);
+  static const Color hotixBlue = Color(0xFF1a237e);
+  static const Color hotixBlueLight = Color(0xFF0d47a1);
+
+  static ThemeData get themeData => ThemeData(
+    fontFamily: 'Roboto',
+    primaryColor: hotixRed,
+    scaffoldBackgroundColor: hotixWhite,
+    appBarTheme: AppBarTheme(
+      backgroundColor: hotixRed,
+      foregroundColor: Colors.white,
+      elevation: 0,
+      centerTitle: true,
+      titleTextStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 22, color: Colors.white),
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: Colors.white,
+      labelStyle: TextStyle(color: hotixRed, fontWeight: FontWeight.w600),
+      hintStyle: TextStyle(color: Colors.grey[600]),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: hotixRed, width: 1.2),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: hotixRed, width: 1.2),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: hotixRedDark, width: 2),
+      ),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: hotixRed,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        textStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        padding: EdgeInsets.symmetric(vertical: 16, horizontal: 32),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: hotixRed,
+        textStyle: TextStyle(fontWeight: FontWeight.bold),
+      ),
+    ),
+    cardTheme: CardTheme(
+      color: Colors.white,
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 0),
+    ),
+    tabBarTheme: TabBarTheme(
+      labelColor: hotixRed,
+      unselectedLabelColor: Colors.grey[600],
+      indicator: UnderlineTabIndicator(
+        borderSide: BorderSide(color: hotixRed, width: 4),
+      ),
+    ),
+  );
+}
+
 class HotelChatbotApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -63,8 +131,20 @@ class HotelChatbotApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Système de Chat Intelligent pour Hôtels',
-      theme: ThemeData.dark(),
+      theme: HotixTheme.themeData,
       home: initialScreen,
+      builder: (context, child) {
+        return Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [HotixTheme.hotixRed, HotixTheme.hotixRedDark],
+            ),
+          ),
+          child: child,
+        );
+      },
     );
   }
 }
@@ -1123,137 +1203,134 @@ Voici l'historique :
     );
   }
 
-  Widget _buildInputArea() {
-    return Center(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: 600),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12.0),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.grey[900],
-              borderRadius: BorderRadius.circular(30),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.10),
-                  blurRadius: 8,
-                  offset: Offset(0, 2),
-                ),
-              ],
-              border: Border.all(color: Color(0xFFe2001a), width: 1.5),
-            ),
-            child: Row(
-              children: [
-                SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    focusNode: _focusNode,
-                    autofocus: true,
-                    decoration: InputDecoration(
-                      hintText: "Écrivez votre message...",
-                      hintStyle: TextStyle(color: Colors.grey[500]),
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 15),
-                    ),
-                    style: TextStyle(color: Colors.white, fontSize: 16),
-                    onSubmitted: (value) => _sendMessage(),
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(Icons.send, color: Color(0xFFe2001a)),
-                  onPressed: _sendMessage,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEscalationBadge() {
-    if (_isConversationEscalated && _assignedReceptionistName != null) {
-      return Container(
-        margin: EdgeInsets.only(bottom: 8),
-        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: Colors.orange[700],
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.person, color: Colors.white, size: 18),
-            SizedBox(width: 8),
-            Text(
-              'Réceptionniste en charge : $_assignedReceptionistName',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-      );
-    }
-    return SizedBox.shrink();
-  }
-
   @override
   Widget build(BuildContext context) {
     print('ChatScreen build appelé');
-    // NE PAS faire de return ChooseRoleScreen ici !
-    // Si les infos ne sont pas encore chargées, affiche un loader
+    final isMobile = MediaQuery.of(context).size.width < 700;
     if (_clientNom == null || _clientPrenom == null || _selectedHotelId == null || _selectedHotelName == null) {
       return Scaffold(
+        backgroundColor: Colors.transparent,
         body: Center(child: CircularProgressIndicator()),
       );
     }
-    // Sinon, affiche l'UI du chat normalement
     return Scaffold(
-      appBar: AppBar(title: Text("Chat Assistant")),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: 700),
-          child: Column(
-            children: [
-              _buildEscalationBadge(),
-              Expanded(
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: _messagesStream,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return Center(child: CircularProgressIndicator());
-                    }
-                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                      return ListView(
-                        controller: _scrollController,
-                        children: [],
-                      );
-                    }
-                    final docs = snapshot.data!.docs;
-                    // Ajout du scroll automatique après chaque build de la liste
-                    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
-                    return ListView.builder(
-                      controller: _scrollController,
-                      reverse: false,
-                      itemCount: docs.length,
-                      itemBuilder: (context, index) {
-                        final doc = docs[index];
-                        final data = doc.data() as Map<String, dynamic>;
-                        final message = ChatMessage(
-                          text: data['text'] ?? "",
-                          isUser: data['isUser'] ?? false,
-                          senderName: data['senderName'],
-                          hasButtons: data['hasButtons'] ?? false,
-                        );
-                        return _buildMessage(message, index);
-                      },
-                    );
-                  },
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(title: Text("Chat Assistant"), backgroundColor: Color(0xFFe2001a)),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFe2001a), Color(0xFFb31217)],
+          ),
+        ),
+        child: Center(
+          child: SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: isMobile ? 400 : 600),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 8.0),
+                child: Column(
+                  children: [
+                    _buildEscalationBadge(),
+                    if (_messages.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 16.0),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("👋", style: TextStyle(fontSize: 32)),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                "Bonjour ${_clientPrenom ?? ''} ! Heureux de vous retrouver. Si vous avez la moindre question, n'hésitez pas à la poser ici, je suis là pour vous aider !",
+                                style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    Container(
+                      height: MediaQuery.of(context).size.height * 0.55,
+                      child: StreamBuilder<QuerySnapshot>(
+                        stream: _messagesStream,
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return Center(child: CircularProgressIndicator());
+                          }
+                          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                            return ListView(
+                              controller: _scrollController,
+                              children: [],
+                            );
+                          }
+                          final docs = snapshot.data!.docs;
+                          WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+                          return ListView.builder(
+                            controller: _scrollController,
+                            reverse: false,
+                            itemCount: docs.length,
+                            itemBuilder: (context, index) {
+                              final doc = docs[index];
+                              final data = doc.data() as Map<String, dynamic>;
+                              final message = ChatMessage(
+                                text: data['text'] ?? "",
+                                isUser: data['isUser'] ?? false,
+                                senderName: data['senderName'],
+                                hasButtons: data['hasButtons'] ?? false,
+                              );
+                              return _buildMessage(message, index);
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(30),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.10),
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                        border: Border.all(color: Color(0xFFe2001a), width: 1.5),
+                      ),
+                      child: Row(
+                        children: [
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: TextField(
+                              controller: _controller,
+                              focusNode: _focusNode,
+                              autofocus: true,
+                              decoration: InputDecoration(
+                                hintText: "Écrivez votre message...",
+                                hintStyle: TextStyle(color: Colors.grey[600]),
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 15),
+                              ),
+                              style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w600),
+                              onSubmitted: (value) => _sendMessage(),
+                            ),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.send, color: Color(0xFFe2001a)),
+                            onPressed: _sendMessage,
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 20),
+                  ],
                 ),
               ),
-              _buildInputArea(),
-              SizedBox(height: 20),
-            ],
+            ),
           ),
         ),
       ),
@@ -1362,6 +1439,38 @@ Voici l'historique :
     for (var doc in snap.docs) {
       await doc.reference.delete();
     }
+  }
+
+  Widget _buildEscalationBadge() {
+    if (_isConversationEscalated && _assignedReceptionistName != null) {
+      return Container(
+        margin: EdgeInsets.only(bottom: 8),
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: Color(0xFFe2001a),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 6,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.person, color: Colors.white, size: 18),
+            SizedBox(width: 8),
+            Text(
+              'Réceptionniste en charge : $_assignedReceptionistName',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      );
+    }
+    return SizedBox.shrink();
   }
 }
 

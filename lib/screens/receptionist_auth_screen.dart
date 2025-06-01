@@ -82,16 +82,17 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: Container(
+        width: double.infinity,
+        height: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF1a237e), // Bleu foncé
-              Color(0xFF0d47a1), // Bleu
-            ],
+            colors: [Color(0xFFe2001a), Color(0xFFb31217)],
           ),
         ),
         child: SafeArea(
@@ -99,69 +100,70 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
             child: SingleChildScrollView(
               child: Padding(
                 padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Logo ou icône
-                    Container(
-                      width: 100,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 10,
-                            offset: Offset(0, 5),
-                          ),
-                        ],
+                child: Container(
+                  constraints: BoxConstraints(maxWidth: isMobile ? 400 : 380),
+                  padding: EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.97),
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 16,
+                        offset: Offset(0, 8),
                       ),
-                      child: Icon(
-                        Icons.headset_mic,
-                        size: 50,
-                        color: Color(0xFFe2001a), // Rouge Hotix
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: Color(0xFFe2001a),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 10,
+                              offset: Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          Icons.headset_mic,
+                          size: 40,
+                          color: Colors.white,
+                        ),
                       ),
-                    ),
-                    SizedBox(height: 32),
-                    
-                    // Titre
-                    Text(
-                      "Authentification Réceptionniste",
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                      SizedBox(height: 28),
+                      Text(
+                        "Authentification Réceptionniste",
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFe2001a),
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      widget.receptionistName,
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: Colors.white70,
+                      SizedBox(height: 6),
+                      Text(
+                        widget.receptionistName,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.black87,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                    ),
-                    SizedBox(height: 32),
-
-                    // Champ de mot de passe
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 10,
-                            offset: Offset(0, 5),
-                          ),
-                        ],
-                      ),
-                      child: TextField(
+                      SizedBox(height: 32),
+                      TextField(
                         controller: _passwordController,
                         obscureText: _obscurePassword,
+                        style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
                         decoration: InputDecoration(
                           hintText: "Mot de passe",
+                          hintStyle: TextStyle(color: Colors.grey[600]),
                           prefixIcon: Icon(Icons.lock, color: Color(0xFFe2001a)),
                           suffixIcon: IconButton(
                             icon: Icon(
@@ -175,72 +177,61 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
                             },
                           ),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(color: Color(0xFFe2001a), width: 1.2),
                           ),
                           filled: true,
                           fillColor: Colors.white,
                         ),
                       ),
-                    ),
-                    SizedBox(height: 16),
-
-                    // Message d'erreur
-                    if (_error != null)
-                      Container(
-                        padding: EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.red),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.error_outline, color: Colors.red),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                _error!,
-                                style: TextStyle(color: Colors.red),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    SizedBox(height: 24),
-
-                    // Bouton de connexion
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _authenticate,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFFe2001a),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      SizedBox(height: 18),
+                      if (_error != null)
+                        Container(
+                          padding: EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.red),
                           ),
-                          elevation: 5,
-                        ),
-                        child: _isLoading
-                            ? SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : Text(
-                                "Se connecter",
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
+                          child: Row(
+                            children: [
+                              Icon(Icons.error_outline, color: Colors.red),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _error!,
+                                  style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600),
                                 ),
                               ),
+                            ],
+                          ),
+                        ),
+                      SizedBox(height: 18),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _authenticate,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color(0xFFe2001a),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            textStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                          child: _isLoading
+                              ? SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Text("Se connecter"),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
