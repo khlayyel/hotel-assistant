@@ -263,7 +263,7 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
       backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: Text("Conversation avec le client", style: TextStyle(color: Color(0xFF232323), fontWeight: FontWeight.bold)),
-        backgroundColor: Color(0xFFe2001a),
+        backgroundColor: Color(0xFF0d1a36),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -289,86 +289,84 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFFe2001a), Color(0xFFb31217)],
+            colors: [Color(0xFF0d1a36), Color(0xFF1976d2)],
           ),
         ),
         child: Center(
-          child: SingleChildScrollView(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: isMobile ? 400 : 600),
-              child: Column(
-                children: [
-                  Expanded(
-                    child: StreamBuilder<QuerySnapshot>(
-                      stream: _messagesStream,
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return Center(child: CircularProgressIndicator());
-                        }
-                        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                          return ListView(
-                            controller: _scrollController,
-                            children: [],
-                          );
-                        }
-                        final docs = snapshot.data!.docs;
-                        WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
-                        return ListView.builder(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: isMobile ? 400 : 600),
+            child: Column(
+              children: [
+                Expanded(
+                  child: StreamBuilder<QuerySnapshot>(
+                    stream: _messagesStream,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return Center(child: CircularProgressIndicator());
+                      }
+                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                        return ListView(
                           controller: _scrollController,
-                          reverse: false,
-                          itemCount: docs.length,
-                          itemBuilder: (context, index) {
-                            final doc = docs[index];
-                            final data = doc.data() as Map<String, dynamic>;
-                            return _buildMessage(data);
-                          },
+                          children: [],
                         );
-                      },
-                    ),
+                      }
+                      final docs = snapshot.data!.docs;
+                      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+                      return ListView.builder(
+                        controller: _scrollController,
+                        reverse: false,
+                        itemCount: docs.length,
+                        itemBuilder: (context, index) {
+                          final doc = docs[index];
+                          final data = doc.data() as Map<String, dynamic>;
+                          return _buildMessage(data);
+                        },
+                      );
+                    },
                   ),
-                  SizedBox(height: 12),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(30),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.10),
-                          blurRadius: 8,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                      border: Border.all(color: Color(0xFFe2001a), width: 1.5),
-                    ),
-                    child: Row(
-                      children: [
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: TextField(
-                            controller: _controller,
-                            focusNode: _focusNode,
-                            autofocus: true,
-                            decoration: InputDecoration(
-                              hintText: "Écrivez votre message...",
-                              hintStyle: TextStyle(color: Colors.grey[600]),
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 15),
-                            ),
-                            style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w600),
-                            onSubmitted: (value) => _sendMessage(),
+                ),
+                SizedBox(height: 12),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(30),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.10),
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                    border: Border.all(color: Color(0xFF0d1a36), width: 1.5),
+                  ),
+                  child: Row(
+                    children: [
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: _controller,
+                          focusNode: _focusNode,
+                          autofocus: true,
+                          decoration: InputDecoration(
+                            hintText: "Écrivez votre message...",
+                            hintStyle: TextStyle(color: Colors.grey[600]),
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 15),
                           ),
+                          style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w600),
+                          onSubmitted: (value) => _sendMessage(),
                         ),
-                        IconButton(
-                          icon: Icon(Icons.send, color: Color(0xFFe2001a)),
-                          onPressed: _sendMessage,
-                        ),
-                      ],
-                    ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.send, color: Color(0xFF0d1a36)),
+                        onPressed: _sendMessage,
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 20),
-                  _buildEscalationBadge(),
-                ],
-              ),
+                ),
+                SizedBox(height: 20),
+                _buildEscalationBadge(),
+              ],
             ),
           ),
         ),
