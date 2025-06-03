@@ -7,9 +7,34 @@ import '../config/platform_config.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+// ==========================
+// receptionist_screen.dart : Écran de chat pour le réceptionniste
+// ==========================
+
+// Importation de la librairie Flutter pour l'UI
+import 'package:flutter/material.dart'; // Permet de créer des widgets visuels
+// Importation de Firestore pour la gestion des messages et de l'état
+import 'package:cloud_firestore/cloud_firestore.dart'; // Accès à la base de données
+// Importation pour la gestion des notifications push (optionnel)
+import 'package:firebase_messaging/firebase_messaging.dart';
+// Importation pour la détection de la plateforme (web/mobile)
+import 'package:flutter/foundation.dart';
+// Importation de la configuration globale
+import '../config/environment.dart';
+// Importation de la gestion de navigation selon la plateforme
+import '../config/platform_config.dart';
+// Importation pour ouvrir des liens externes
+import 'package:url_launcher/url_launcher.dart';
+// Importation pour la gestion des préférences locales
+import 'package:shared_preferences/shared_preferences.dart';
+
+// Widget principal pour l'écran de chat du réceptionniste
 class ReceptionistScreen extends StatefulWidget {
+  // Identifiant de la conversation à gérer
   final String conversationId;
+  // Nom du réceptionniste connecté
   final String receptionistName;
+  // Nom du réceptionniste assigné à la conversation (optionnel)
   final String? assignedReceptionistName;
 
   const ReceptionistScreen({
@@ -23,21 +48,31 @@ class ReceptionistScreen extends StatefulWidget {
   State<ReceptionistScreen> createState() => _ReceptionistScreenState();
 }
 
+// Classe d'état associée à ReceptionistScreen
 class _ReceptionistScreenState extends State<ReceptionistScreen> {
+  // Contrôleur pour le champ de saisie du message
   final TextEditingController _controller = TextEditingController();
+  // FocusNode pour gérer le focus du champ de saisie
   final FocusNode _focusNode = FocusNode();
+  // Contrôleur pour le scroll de la liste des messages
   final ScrollController _scrollController = ScrollController();
+  // Flux de messages Firestore pour l'affichage en temps réel
   Stream<QuerySnapshot>? _messagesStream;
+  // Indique si le réceptionniste est en train d'écrire
   bool _isTyping = false;
+  // Indique si la conversation a été escaladée
   bool _isConversationEscalated = false;
 
   @override
   void initState() {
     super.initState();
+    // Démarre l'écoute des messages en temps réel
     _listenToMessages();
+    // Vérifie si la conversation est escaladée
     _checkEscalationStatus();
   }
 
+  // Méthode pour écouter les messages en temps réel d'une conversation
   void _listenToMessages() {
     _messagesStream = FirebaseFirestore.instance
         .collection('conversations')
@@ -47,6 +82,7 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
         .snapshots();
   }
 
+  // Méthode pour vérifier si la conversation a été escaladée
   Future<void> _checkEscalationStatus() async {
     final doc = await FirebaseFirestore.instance
         .collection('conversations')
@@ -59,12 +95,14 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
     }
   }
 
+  // Méthode pour envoyer un message dans la conversation
   void _sendMessage() async {
+    // Ne rien faire si le champ est vide
     if (_controller.text.isEmpty) return;
     String userMessage = _controller.text.trim();
     _controller.clear();
 
-    // Vérifier si la conversation est déjà prise en charge
+    // Vérifier si la conversation est déjà prise en charge par un autre réceptionniste
     final conversationDoc = await FirebaseFirestore.instance
         .collection('conversations')
         .doc(widget.conversationId)
@@ -91,7 +129,7 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
           'assignedReceptionist': {'name': widget.receptionistName},
         });
 
-    // Envoyer le message
+    // Envoyer le message dans Firestore
     await FirebaseFirestore.instance
         .collection('conversations')
         .doc(widget.conversationId)
@@ -106,6 +144,7 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
     _scrollToBottom();
   }
 
+  // Méthode pour scroller automatiquement en bas de la liste des messages
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
@@ -116,6 +155,7 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
     }
   }
 
+  // Widget pour afficher un message du chat
   Widget _buildMessage(Map<String, dynamic> data) {
     final sender    = (data['senderName'] ?? "").toString();
     final text      = data['text'] ?? "";
@@ -129,6 +169,7 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
         mainAxisAlignment: alignRight ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
           if (!alignRight) ...[
+            // Avatar pour le client
             CircleAvatar(
               backgroundColor: Colors.grey[700],
               child: Icon(Icons.person, color: Colors.white),
@@ -169,6 +210,7 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
           ),
           if (alignRight) ...[
             SizedBox(width: 10),
+            // Avatar pour le réceptionniste ou le bot
             CircleAvatar(
               backgroundColor: isMe ? Colors.grey[900] : Colors.grey[700],
               child: Icon(
@@ -182,6 +224,7 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
     );
   }
 
+  // Widget pour la zone de saisie du message
   Widget _buildInputArea() {
     return Center(
       child: ConstrainedBox(
@@ -231,6 +274,7 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
     );
   }
 
+  // Widget pour afficher le badge d'escalade si la conversation est en cours
   Widget _buildEscalationBadge() {
     if (_isConversationEscalated) {
       return Container(
@@ -259,6 +303,7 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
   @override
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.of(context).size.width < 600;
+    // Scaffold fournit la structure de base de l'écran
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -326,6 +371,7 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
                   ),
                 ),
                 SizedBox(height: 12),
+                // Champ de saisie du message
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -365,6 +411,7 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
                   ),
                 ),
                 SizedBox(height: 20),
+                // Badge d'escalade si besoin
                 _buildEscalationBadge(),
               ],
             ),

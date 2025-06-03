@@ -1,16 +1,29 @@
+// ==========================
+// server.js : Backend Node.js pour l'IA et les notifications email
+// ==========================
+
+// Chargement des variables d'environnement depuis le fichier .env
 require('dotenv').config();
+// Importation du framework Express pour créer le serveur HTTP
 const express = require('express');
+// Importation de CORS pour autoriser les requêtes cross-origin
 const cors = require('cors');
+// Importation de node-fetch pour effectuer des requêtes HTTP externes
 const fetch = require('node-fetch');
+// Importation de nodemailer pour l'envoi d'emails
 const nodemailer = require('nodemailer');
+// Création de l'application Express
 const app = express();
+// Définition du port d'écoute du serveur (par défaut 3000 ou depuis .env)
 const PORT = process.env.PORT || 3000;
 
+// Liste des origines autorisées pour les requêtes CORS
 const allowedOrigins = [
   "http://localhost:3000",
   "https://assistant-i1ojs8h3k-khalils-projects-014efdbb.vercel.app"
 ];
 
+// Configuration du middleware CORS pour sécuriser les accès
 app.use(cors({
   origin: function(origin, callback) {
     if (!origin) return callback(null, true);
@@ -25,16 +38,22 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+// Middleware pour parser le corps des requêtes en JSON
 app.use(express.json());
 
-// Endpoint pour l'appel à GroqCloud
+// ==========================
+// Endpoint pour l'appel à GroqCloud (IA)
+// ==========================
 app.post('/api/predictions', async (req, res) => {
+  // Récupération du prompt utilisateur depuis la requête
   const { input } = req.body;
+  // Récupération de la clé API GroqCloud depuis les variables d'environnement
   const apiKey = process.env.GROQ_API_KEY || "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";
   if (!apiKey) {
     return res.status(500).json({ error: "Clé API GroqCloud manquante." });
   }
   try {
+    // Appel à l'API GroqCloud pour générer une réponse IA
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -44,7 +63,7 @@ app.post('/api/predictions', async (req, res) => {
       body: JSON.stringify({
         model: "llama-3.3-70b-versatile",
         messages: [
-          { role: "system", content: "Tu es un assistant hôtelier professionnel, réponds toujours en français, poliment et efficacement." },
+          { role: "system", content: "Tu es un assistant hôtelier professionnel, réponds toujours en meme langue du client, poliment et efficacement." },
           { role: "user", content: input.prompt }
         ],
         temperature: 1,
@@ -53,8 +72,10 @@ app.post('/api/predictions', async (req, res) => {
         stream: false
       })
     });
+    // Récupération de la réponse JSON
     const data = await response.json();
     console.log('Réponse GroqCloud:', data);
+    // Vérifie que la réponse contient bien un message généré
     if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
       res.json({
         status: 'succeeded',
@@ -69,14 +90,19 @@ app.post('/api/predictions', async (req, res) => {
   }
 });
 
+// ==========================
 // Endpoint pour envoyer un email de notification
+// ==========================
 app.post('/api/sendNotification', async (req, res) => {
+  // Récupération des informations de la notification depuis la requête
   const { title, body, emails, conversationLink } = req.body;
   try {
+    // Vérifie que les identifiants email sont bien présents dans les variables d'environnement
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
       console.error('❌ EMAIL_USER ou EMAIL_PASS manquant dans les variables d\'environnement.');
       return res.status(500).json({ error: "EMAIL_USER ou EMAIL_PASS manquant dans le serveur. Vérifiez le .env et redémarrez le serveur." });
     }
+    // Création du transporteur SMTP avec Gmail
     let transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
@@ -84,6 +110,7 @@ app.post('/api/sendNotification', async (req, res) => {
         pass: process.env.EMAIL_PASS
       }
     });
+    // Envoi d'un email à chaque destinataire
     for (const email of emails) {
       console.log(`[${new Date().toISOString()}] Début envoi mail à ${email}`);
       const start = Date.now();
@@ -107,6 +134,9 @@ app.post('/api/sendNotification', async (req, res) => {
   }
 });
 
+// ==========================
+// Démarrage du serveur Express
+// ==========================
 app.listen(PORT, () => {
   console.log(`Serveur lancé sur le port ${PORT}`);
 }); 

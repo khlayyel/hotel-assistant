@@ -1,9 +1,19 @@
-import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'receptionist_screen.dart';
+// ==========================
+// receptionist_auth_screen.dart : Authentification du réceptionniste avant accès au chat
+// ==========================
 
+// Importation de la librairie Flutter pour l'UI
+import 'package:flutter/material.dart'; // Permet de créer des widgets visuels
+// Importation de Firestore pour la vérification des identifiants
+import 'package:cloud_firestore/cloud_firestore.dart'; // Accès à la base de données
+// Importation de l'écran de chat réceptionniste
+import 'receptionist_screen.dart'; // Navigation après authentification
+
+// Widget principal pour l'authentification du réceptionniste
 class ReceptionistAuthScreen extends StatefulWidget {
+  // Identifiant de la conversation à rejoindre
   final String conversationId;
+  // Nom du réceptionniste à authentifier
   final String receptionistName;
 
   const ReceptionistAuthScreen({
@@ -16,13 +26,20 @@ class ReceptionistAuthScreen extends StatefulWidget {
   _ReceptionistAuthScreenState createState() => _ReceptionistAuthScreenState();
 }
 
+// Classe d'état associée à ReceptionistAuthScreen
 class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
+  // Contrôleur pour le champ mot de passe
   final TextEditingController _passwordController = TextEditingController();
+  // Indique si l'authentification est en cours
   bool _isLoading = false;
+  // Message d'erreur à afficher
   String? _error;
+  // Gère l'affichage/masquage du mot de passe
   bool _obscurePassword = true;
 
+  // Méthode pour authentifier le réceptionniste
   Future<void> _authenticate() async {
+    // Vérifie que le champ mot de passe n'est pas vide
     if (_passwordController.text.isEmpty) {
       setState(() {
         _error = "Veuillez entrer votre mot de passe";
@@ -53,6 +70,7 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
       final receptionistDoc = receptionistQuery.docs.first;
       final receptionistData = receptionistDoc.data();
 
+      // Vérifie le mot de passe
       if (receptionistData['password'] != _passwordController.text) {
         setState(() {
           _error = "Mot de passe incorrect";
@@ -61,7 +79,7 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
         return;
       }
 
-      // Authentification réussie
+      // Authentification réussie : navigation vers l'écran de chat réceptionniste
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -83,6 +101,7 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
   @override
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.of(context).size.width < 600;
+    // Scaffold fournit la structure de base de l'écran
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Container(
@@ -117,6 +136,7 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
+                      // Icône réceptionniste
                       Container(
                         width: 80,
                         height: 80,
@@ -138,6 +158,7 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
                         ),
                       ),
                       SizedBox(height: 28),
+                      // Titre
                       Text(
                         "Authentification Réceptionniste",
                         style: TextStyle(
@@ -148,6 +169,7 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
                         textAlign: TextAlign.center,
                       ),
                       SizedBox(height: 6),
+                      // Affichage du nom du réceptionniste
                       Text(
                         widget.receptionistName,
                         style: TextStyle(
@@ -157,6 +179,7 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
                         textAlign: TextAlign.center,
                       ),
                       SizedBox(height: 32),
+                      // Champ mot de passe
                       TextField(
                         controller: _passwordController,
                         obscureText: _obscurePassword,
@@ -185,6 +208,7 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
                         ),
                       ),
                       SizedBox(height: 18),
+                      // Affichage de l'erreur si besoin
                       if (_error != null)
                         Container(
                           padding: EdgeInsets.all(10),
@@ -207,6 +231,7 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
                           ),
                         ),
                       SizedBox(height: 18),
+                      // Bouton de connexion
                       SizedBox(
                         width: double.infinity,
                         height: 48,
@@ -243,6 +268,7 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
 
   @override
   void dispose() {
+    // Libère le contrôleur de texte
     _passwordController.dispose();
     super.dispose();
   }

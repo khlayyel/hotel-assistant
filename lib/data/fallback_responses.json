@@ -1,3 +1,7 @@
+// ==========================
+// fallback_responses.json : Réponses de secours pour détecter les réponses génériques de l'IA
+// Structure : fallback_responses > langue > catégorie > liste de phrases
+// ==========================
 {
   "fallback_responses": {
     "french": {

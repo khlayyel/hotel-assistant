@@ -1,35 +1,55 @@
-import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'gestion_hotels_screen.dart';
+// ==========================
+// login_admin_screen.dart : Écran de connexion pour les administrateurs
+// ==========================
+
+// Importation de la librairie Flutter pour l'UI
+import 'package:flutter/material.dart'; // Permet de créer des widgets visuels
+// Importation de Firestore pour la vérification des identifiants admin
+import 'package:cloud_firestore/cloud_firestore.dart'; // Accès à la base de données
+// Importation de l'écran de gestion des hôtels (après connexion)
+import 'gestion_hotels_screen.dart'; // Navigation après login
+// Importation de l'écran de choix de rôle (pour retour)
 import 'choose_role_screen.dart';
 
+// Widget principal pour la connexion admin
 class LoginAdminScreen extends StatefulWidget {
   @override
   State<LoginAdminScreen> createState() => _LoginAdminScreenState();
 }
 
+// Classe d'état associée à LoginAdminScreen
 class _LoginAdminScreenState extends State<LoginAdminScreen> {
+  // Contrôleur pour le champ nom d'utilisateur
   final TextEditingController _usernameController = TextEditingController();
+  // Contrôleur pour le champ mot de passe
   final TextEditingController _passwordController = TextEditingController();
+  // Indique si la connexion est en cours
   bool _loading = false;
+  // Message d'erreur à afficher
   String? _error;
+  // Gère l'affichage/masquage du mot de passe
   bool _obscurePassword = true;
 
+  // Méthode pour tenter la connexion admin
   Future<void> _login() async {
     setState(() { _loading = true; _error = null; });
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
 
+    // Vérifie que les champs ne sont pas vides
     if (username.isEmpty || password.isEmpty) {
       setState(() { _error = "Veuillez remplir tous les champs."; _loading = false; });
       return;
     }
 
     try {
+      // Recherche l'admin dans Firestore
       final query = await FirebaseFirestore.instance.collection('admins').where('username', isEqualTo: username).get();
       if (query.docs.isNotEmpty) {
         final adminDoc = query.docs.first;
+        // Vérifie le mot de passe
         if (adminDoc.data()['password'] == password) {
+          // Navigation vers la gestion des hôtels si succès
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => GestionHotelsScreen()),
@@ -48,6 +68,7 @@ class _LoginAdminScreenState extends State<LoginAdminScreen> {
   @override
   Widget build(BuildContext context) {
     final isMobile = MediaQuery.of(context).size.width < 600;
+    // Scaffold fournit la structure de base de l'écran
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Container(
@@ -81,10 +102,13 @@ class _LoginAdminScreenState extends State<LoginAdminScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                    // Icône admin
                     Icon(Icons.admin_panel_settings, size: 48, color: Color(0xFF0d1a36)),
                     SizedBox(height: 18),
+                    // Titre
                     Text("Connexion Admin", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF0d1a36))),
                     SizedBox(height: 30),
+                    // Champ nom d'utilisateur
                     TextField(
                       controller: _usernameController,
                       style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
@@ -94,6 +118,7 @@ class _LoginAdminScreenState extends State<LoginAdminScreen> {
                       ),
                     ),
                     SizedBox(height: 16),
+                    // Champ mot de passe
                     TextField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
@@ -112,6 +137,7 @@ class _LoginAdminScreenState extends State<LoginAdminScreen> {
                       ),
                     ),
                     SizedBox(height: 24),
+                    // Affichage de l'erreur si besoin
                     if (_error != null)
                       Container(
                         padding: EdgeInsets.all(10),
@@ -131,6 +157,7 @@ class _LoginAdminScreenState extends State<LoginAdminScreen> {
                         ),
                       ),
                     SizedBox(height: 18),
+                    // Bouton de connexion
                     SizedBox(
                       width: double.infinity,
                       height: 48,

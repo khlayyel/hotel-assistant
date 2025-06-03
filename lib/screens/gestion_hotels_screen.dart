@@ -2,18 +2,35 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'choose_role_screen.dart';
 
+// ==========================
+// gestion_hotels_screen.dart : Écran principal pour la gestion des hôtels, réceptionnistes et admins
+// Permet d'ajouter, modifier, supprimer des hôtels et des utilisateurs
+// ==========================
+
+// Importation de la librairie Flutter pour l'UI
+import 'package:flutter/material.dart'; // Permet de créer des widgets visuels
+// Importation de Firestore pour la gestion des données
+import 'package:cloud_firestore/cloud_firestore.dart'; // Accès à la base de données
+// Importation de l'écran de choix de rôle (pour retour)
+import 'choose_role_screen.dart';
+
+// Widget principal pour la gestion des hôtels et des utilisateurs
 class GestionHotelsScreen extends StatefulWidget {
   @override
   _GestionHotelsScreenState createState() => _GestionHotelsScreenState();
 }
 
+// Classe d'état associée à GestionHotelsScreen
 class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTickerProviderStateMixin {
+  // Contrôleurs pour les champs de saisie
   final TextEditingController _hotelController = TextEditingController();
   final TextEditingController _receptionistEmailController = TextEditingController();
   final TextEditingController _receptionistNameController = TextEditingController();
   final TextEditingController _receptionistPasswordController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
+  // Instance Firestore
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  // Variables d'état pour la gestion des hôtels et utilisateurs
   String? _selectedHotelId;
   String? _selectedHotelName;
   List<Map<String, dynamic>> _receptionists = [];
@@ -32,7 +49,7 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
   final TextEditingController _adminPasswordController = TextEditingController();
   bool _showAddAdminForm = false;
 
-  // Ajoute les variables d'état pour afficher/masquer les mots de passe
+  // Variables d'état pour afficher/masquer les mots de passe
   bool _showReceptionistPassword = false;
   bool _showEditReceptionistPassword = false;
   bool _showAdminPassword = false;
@@ -41,6 +58,7 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
   @override
   void initState() {
     super.initState();
+    // Ajoute les listeners pour la recherche et la saisie d'hôtel
     _searchController.addListener(_filterReceptionists);
     _hotelController.addListener(_onHotelInputChanged);
     _loadAllHotels();
@@ -50,6 +68,7 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
 
   @override
   void dispose() {
+    // Libère les ressources des contrôleurs
     _searchController.dispose();
     _hotelController.dispose();
     _receptionistEmailController.dispose();
