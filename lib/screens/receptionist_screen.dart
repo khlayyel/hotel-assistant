@@ -307,7 +307,10 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: Text("Conversation avec le client", style: TextStyle(color: Color(0xFF232323), fontWeight: FontWeight.bold)),
+        title: Text(
+          "Conversation avec le client",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Color(0xFF0d1a36),
         actions: [
           IconButton(

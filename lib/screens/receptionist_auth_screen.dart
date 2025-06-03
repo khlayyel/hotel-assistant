@@ -8,6 +8,9 @@ import 'package:flutter/material.dart'; // Permet de créer des widgets visuels
 import 'package:cloud_firestore/cloud_firestore.dart'; // Accès à la base de données
 // Importation de l'écran de chat réceptionniste
 import 'receptionist_screen.dart'; // Navigation après authentification
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import '../config/environment.dart';
 
 // Widget principal pour l'authentification du réceptionniste
 class ReceptionistAuthScreen extends StatefulWidget {
@@ -36,6 +39,19 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
   String? _error;
   // Gère l'affichage/masquage du mot de passe
   bool _obscurePassword = true;
+
+  Future<String> encryptPassword(String password) async {
+    final response = await http.post(
+      Uri.parse(Environment.apiBaseUrl + '/encrypt'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'password': password}),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body)['encrypted'];
+    } else {
+      throw Exception('Erreur de chiffrement');
+    }
+  }
 
   // Méthode pour authentifier le réceptionniste
   Future<void> _authenticate() async {
@@ -70,8 +86,11 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
       final receptionistDoc = receptionistQuery.docs.first;
       final receptionistData = receptionistDoc.data();
 
+      // Chiffre le mot de passe saisi
+      final encryptedInput = await encryptPassword(_passwordController.text);
+
       // Vérifie le mot de passe
-      if (receptionistData['password'] != _passwordController.text) {
+      if (receptionistData['password'] != encryptedInput) {
         setState(() {
           _error = "Mot de passe incorrect";
           _isLoading = false;

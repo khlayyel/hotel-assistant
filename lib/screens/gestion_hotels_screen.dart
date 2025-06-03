@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'choose_role_screen.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import '../config/environment.dart';
 
 // ==========================
 // gestion_hotels_screen.dart : Écran principal pour la gestion des hôtels, réceptionnistes et admins
@@ -246,6 +249,32 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
     }
   }
 
+  Future<String> encryptPassword(String password) async {
+    final response = await http.post(
+      Uri.parse(Environment.apiBaseUrl + '/encrypt'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'password': password}),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body)['encrypted'];
+    } else {
+      throw Exception('Erreur de chiffrement');
+    }
+  }
+
+  Future<String> decryptPassword(String encrypted) async {
+    final response = await http.post(
+      Uri.parse(Environment.apiBaseUrl + '/decrypt'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'encrypted': encrypted}),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body)['decrypted'];
+    } else {
+      throw Exception('Erreur de déchiffrement');
+    }
+  }
+
   Future<void> _addReceptionist() async {
     if (_selectedHotelId == null) {
       print('❌ Impossible d\'ajouter un réceptionniste: Aucun hôtel sélectionné');
@@ -279,13 +308,14 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
 
     print('Début de l\'ajout du réceptionniste - Nom: $name, Email: $email');
     try {
+      final encryptedPassword = await encryptPassword(password);
       final docRef = await _firestore
           .collection('hotels')
           .doc(_selectedHotelId)
           .collection('receptionists')
           .add({
         'name': name,
-        'password': password,
+        'password': encryptedPassword,
         'emails': [
           {
             'address': email,
@@ -610,6 +640,7 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
               }
               
               try {
+                final newEncryptedPassword = await encryptPassword(newPassword);
                 await _firestore
                     .collection('hotels')
                     .doc(_selectedHotelId)
@@ -617,7 +648,7 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
                     .doc(receptionist['id'])
                     .update({
                   'name': newName,
-                  'password': newPassword,
+                  'password': newEncryptedPassword,
                 });
                 print('✅ Réceptionniste modifié avec succès: $newName');
                 await _loadReceptionists();
@@ -837,9 +868,10 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
       return;
     }
     try {
+      final encryptedAdminPassword = await encryptPassword(password);
       await _firestore.collection('admins').add({
         'username': username,
-        'password': password,
+        'password': encryptedAdminPassword,
       });
       _adminUsernameController.clear();
       _adminPasswordController.clear();
@@ -871,7 +903,7 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
 
   Future<void> _editAdmin(Map<String, dynamic> admin) async {
     final TextEditingController usernameController = TextEditingController(text: admin['username']);
-    final TextEditingController passwordController = TextEditingController(text: admin['password']);
+    final TextEditingController passwordController = TextEditingController(text: admin['password'] ?? '');
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -926,9 +958,10 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
               final newPassword = passwordController.text.trim();
               if (newUsername.isEmpty || newPassword.isEmpty) return;
               try {
+                final newEncryptedAdminPassword = await encryptPassword(newPassword);
                 await _firestore.collection('admins').doc(admin['id']).update({
                   'username': newUsername,
-                  'password': newPassword,
+                  'password': newEncryptedAdminPassword,
                 });
                 await _loadAdmins();
                 Navigator.pop(context);
@@ -1236,7 +1269,7 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
                                         children: [
                                           TextField(
                                             controller: _receptionistNameController,
-                                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                                            style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
                                             decoration: InputDecoration(
                                               labelText: 'Nom du réceptionniste',
                                               border: OutlineInputBorder(),
@@ -1246,7 +1279,7 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
                                           SizedBox(height: 8),
                                           TextField(
                                             controller: _receptionistEmailController,
-                                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                                            style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
                                             decoration: InputDecoration(
                                               labelText: 'Email du réceptionniste (obligatoire)',
                                               border: OutlineInputBorder(),
@@ -1258,7 +1291,7 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
                                           TextField(
                                             controller: _receptionistPasswordController,
                                             obscureText: !_showReceptionistPassword,
-                                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                                            style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
                                             decoration: InputDecoration(
                                               labelText: 'Mot de passe (minimum 6 caractères)',
                                               border: OutlineInputBorder(),

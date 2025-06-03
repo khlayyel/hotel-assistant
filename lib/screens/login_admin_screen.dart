@@ -10,6 +10,9 @@ import 'package:cloud_firestore/cloud_firestore.dart'; // Accès à la base de d
 import 'gestion_hotels_screen.dart'; // Navigation après login
 // Importation de l'écran de choix de rôle (pour retour)
 import 'choose_role_screen.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import '../config/environment.dart';
 
 // Widget principal pour la connexion admin
 class LoginAdminScreen extends StatefulWidget {
@@ -30,6 +33,19 @@ class _LoginAdminScreenState extends State<LoginAdminScreen> {
   // Gère l'affichage/masquage du mot de passe
   bool _obscurePassword = true;
 
+  Future<String> encryptPassword(String password) async {
+    final response = await http.post(
+      Uri.parse(Environment.apiBaseUrl + '/encrypt'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'password': password}),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body)['encrypted'];
+    } else {
+      throw Exception('Erreur de chiffrement');
+    }
+  }
+
   // Méthode pour tenter la connexion admin
   Future<void> _login() async {
     setState(() { _loading = true; _error = null; });
@@ -47,8 +63,9 @@ class _LoginAdminScreenState extends State<LoginAdminScreen> {
       final query = await FirebaseFirestore.instance.collection('admins').where('username', isEqualTo: username).get();
       if (query.docs.isNotEmpty) {
         final adminDoc = query.docs.first;
+        final encryptedInput = await encryptPassword(password);
         // Vérifie le mot de passe
-        if (adminDoc.data()['password'] == password) {
+        if (adminDoc.data()['password'] == encryptedInput) {
           // Navigation vers la gestion des hôtels si succès
           Navigator.pushReplacement(
             context,

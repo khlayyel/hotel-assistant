@@ -12,10 +12,14 @@ const cors = require('cors');
 const fetch = require('node-fetch');
 // Importation de nodemailer pour l'envoi d'emails
 const nodemailer = require('nodemailer');
+// Importation de crypto-js pour le chiffrement/déchiffrement des mots de passe
+const CryptoJS = require('crypto-js');
 // Création de l'application Express
 const app = express();
 // Définition du port d'écoute du serveur (par défaut 3000 ou depuis .env)
 const PORT = process.env.PORT || 3000;
+// Définition de la clé secrète pour le chiffrement/déchiffrement des mots de passe
+const PASSWORD_SECRET = process.env.PASSWORD_SECRET || "votre_clé_ultra_secrète";
 
 // Liste des origines autorisées pour les requêtes CORS
 const allowedOrigins = [
@@ -131,6 +135,31 @@ app.post('/api/sendNotification', async (req, res) => {
   } catch (error) {
     console.error("Erreur lors de l'envoi des emails:", error);
     res.status(500).json({ error: "Erreur lors de l'envoi des emails: " + error.message });
+  }
+});
+
+// ==========================
+// Endpoints pour le chiffrement/déchiffrement des mots de passe
+// ==========================
+
+// Chiffrement d'un mot de passe (POST /api/encrypt)
+app.post('/api/encrypt', (req, res) => {
+  const { password } = req.body;
+  if (!password) return res.status(400).json({ error: "Mot de passe manquant" });
+  const encrypted = CryptoJS.AES.encrypt(password, PASSWORD_SECRET).toString();
+  res.json({ encrypted });
+});
+
+// Déchiffrement d'un mot de passe (POST /api/decrypt)
+app.post('/api/decrypt', (req, res) => {
+  const { encrypted } = req.body;
+  if (!encrypted) return res.status(400).json({ error: "Mot de passe chiffré manquant" });
+  try {
+    const bytes = CryptoJS.AES.decrypt(encrypted, PASSWORD_SECRET);
+    const decrypted = bytes.toString(CryptoJS.enc.Utf8);
+    res.json({ decrypted });
+  } catch (e) {
+    res.status(400).json({ error: "Erreur de déchiffrement" });
   }
 });
 
