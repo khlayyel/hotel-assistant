@@ -19,7 +19,11 @@ const app = express();
 // Définition du port d'écoute du serveur (par défaut 3000 ou depuis .env)
 const PORT = process.env.PORT || 3000;
 // Définition de la clé secrète pour le chiffrement/déchiffrement des mots de passe
-const PASSWORD_SECRET = process.env.PASSWORD_SECRET || "K4!v9@zQ2#r8$wX7pL6sT1bN0eY5uC3m";
+const PASSWORD_SECRET = process.env.PASSWORD_SECRET;
+if (!PASSWORD_SECRET) {
+  throw new Error("PASSWORD_SECRET manquant dans les variables d'environnement !");
+}
+console.log('🔑 PASSWORD_SECRET chargé (longueur):', PASSWORD_SECRET ? PASSWORD_SECRET.length : 'Aucune');
 
 // Liste des origines autorisées pour les requêtes CORS
 const allowedOrigins = [
