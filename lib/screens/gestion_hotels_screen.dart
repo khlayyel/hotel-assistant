@@ -184,16 +184,26 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
           .collection('receptionists')
           .orderBy('createdAt', descending: true)
           .get();
+      List<Map<String, dynamic>> receptionists = [];
+      for (var doc in querySnapshot.docs) {
+        String encrypted = doc['password'];
+        String decrypted = '';
+        try {
+          decrypted = await decryptPassword(encrypted);
+        } catch (e) {
+          decrypted = '[Erreur de déchiffrement]';
+        }
+        receptionists.add({
+          'id': doc.id,
+          ...doc.data(),
+          'decryptedPassword': decrypted,
+        });
+      }
       setState(() {
-        _receptionists = querySnapshot.docs
-            .map((doc) => {
-                  'id': doc.id,
-                  ...doc.data(),
-                })
-            .toList();
+        _receptionists = receptionists;
         _filteredReceptionists = List.from(_receptionists);
       });
-      print('✅ ${_receptionists.length} réceptionniste(s) chargé(s) avec succès');
+      print('✅ \\${_receptionists.length} réceptionniste(s) chargé(s) avec succès');
     } catch (e) {
       print('❌ Erreur lors du chargement des réceptionnistes: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -581,9 +591,9 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
   }
 
   Future<void> _editReceptionist(Map<String, dynamic> receptionist) async {
-    print('Début de la modification du réceptionniste: ${receptionist['name']}');
+    print('Début de la modification du réceptionniste: \\${receptionist['name']}');
     final TextEditingController nameController = TextEditingController(text: receptionist['name']);
-    final TextEditingController passwordController = TextEditingController(text: receptionist['password'] ?? '');
+    final TextEditingController passwordController = TextEditingController(text: receptionist['decryptedPassword'] ?? '');
     
     await showDialog(
       context: context,
@@ -850,11 +860,23 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
 
   Future<void> _loadAdmins() async {
     final querySnapshot = await _firestore.collection('admins').get();
-    setState(() {
-      _admins = querySnapshot.docs.map((doc) => {
+    List<Map<String, dynamic>> admins = [];
+    for (var doc in querySnapshot.docs) {
+      String encrypted = doc['password'];
+      String decrypted = '';
+      try {
+        decrypted = await decryptPassword(encrypted);
+      } catch (e) {
+        decrypted = '[Erreur de déchiffrement]';
+      }
+      admins.add({
         'id': doc.id,
         ...doc.data(),
-      }).toList();
+        'decryptedPassword': decrypted,
+      });
+    }
+    setState(() {
+      _admins = admins;
     });
   }
 
@@ -903,7 +925,7 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
 
   Future<void> _editAdmin(Map<String, dynamic> admin) async {
     final TextEditingController usernameController = TextEditingController(text: admin['username']);
-    final TextEditingController passwordController = TextEditingController(text: admin['password'] ?? '');
+    final TextEditingController passwordController = TextEditingController(text: admin['decryptedPassword'] ?? '');
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1462,6 +1484,7 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
                               ),
                             ),
                           ),
+                        ),
                         SizedBox(height: 16),
                         Card(
                           elevation: 4,
@@ -1479,7 +1502,7 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
                                     return ListTile(
                                       leading: Icon(Icons.admin_panel_settings, color: Colors.white),
                                       title: Text(admin['username'] ?? '', style: TextStyle(color: Color(0xFF0d1a36), fontWeight: FontWeight.bold, fontSize: 16)),
-                                      subtitle: Text('Mot de passe : ${admin['password'] ?? ''}', style: TextStyle(color: Colors.black87)),
+                                      subtitle: Text('Mot de passe : \\${admin['decryptedPassword'] ?? ''}', style: TextStyle(color: Colors.black87)),
                                       trailing: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
