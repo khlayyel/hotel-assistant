@@ -19,7 +19,7 @@ const app = express();
 // Définition du port d'écoute du serveur (par défaut 3000 ou depuis .env)
 const PORT = process.env.PORT || 3000;
 // Définition de la clé secrète pour le chiffrement/déchiffrement des mots de passe
-const PASSWORD_SECRET = process.env.PASSWORD_SECRET || "votre_clé_ultra_secrète";
+const PASSWORD_SECRET = process.env.PASSWORD_SECRET || "K4!v9@zQ2#r8$wX7pL6sT1bN0eY5uC3m";
 
 // Liste des origines autorisées pour les requêtes CORS
 const allowedOrigins = [
