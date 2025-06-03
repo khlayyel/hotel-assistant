@@ -1484,7 +1484,6 @@ class _GestionHotelsScreenState extends State<GestionHotelsScreen> with SingleTi
                               ),
                             ),
                           ),
-                        ),
                         SizedBox(height: 16),
                         Card(
                           elevation: 4,
