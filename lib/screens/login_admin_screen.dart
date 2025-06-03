@@ -46,6 +46,19 @@ class _LoginAdminScreenState extends State<LoginAdminScreen> {
     }
   }
 
+  Future<String> decryptPassword(String encrypted) async {
+    final response = await http.post(
+      Uri.parse(Environment.apiBaseUrl + '/decrypt'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'encrypted': encrypted}),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body)['decrypted'];
+    } else {
+      throw Exception('Erreur de déchiffrement: ${response.body}');
+    }
+  }
+
   // Méthode pour tenter la connexion admin
   Future<void> _login() async {
     setState(() { _loading = true; _error = null; });
@@ -63,19 +76,33 @@ class _LoginAdminScreenState extends State<LoginAdminScreen> {
       final query = await FirebaseFirestore.instance.collection('admins').where('username', isEqualTo: username).get();
       if (query.docs.isNotEmpty) {
         final adminDoc = query.docs.first;
-        final encryptedInput = await encryptPassword(password);
-        // Vérifie le mot de passe
-        if (adminDoc.data()['password'] == encryptedInput) {
-          // Navigation vers la gestion des hôtels si succès
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => GestionHotelsScreen()),
-          );
-          setState(() { _loading = false; });
-          return;
+        final storedEncryptedPassword = adminDoc.data()['password'];
+
+        if (storedEncryptedPassword != null && storedEncryptedPassword.isNotEmpty) {
+          try {
+            // Déchiffre le mot de passe stocké et compare-le au mot de passe saisi
+            final decryptedStoredPassword = await decryptPassword(storedEncryptedPassword);
+            if (decryptedStoredPassword == password) {
+              // Navigation vers la gestion des hôtels si succès
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => GestionHotelsScreen()),
+              );
+              setState(() { _loading = false; });
+              return;
+            } else {
+              setState(() { _error = "Identifiants incorrects."; });
+            }
+          } catch (e) {
+            print('Erreur de déchiffrement lors du login : $e');
+            setState(() { _error = "Erreur de connexion ou identifiants incorrects."; });
+          }
+        } else {
+           setState(() { _error = "Identifiants incorrects (mot de passe manquant)."; });
         }
+      } else {
+         setState(() { _error = "Identifiants incorrects (utilisateur non trouvé)."; });
       }
-      setState(() { _error = "Identifiants incorrects."; });
     } catch (e) {
       setState(() { _error = "Erreur de connexion."; });
     }

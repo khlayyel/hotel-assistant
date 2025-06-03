@@ -53,6 +53,19 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
     }
   }
 
+  Future<String> decryptPassword(String encrypted) async {
+    final response = await http.post(
+      Uri.parse(Environment.apiBaseUrl + '/decrypt'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'encrypted': encrypted}),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body)['decrypted'];
+    } else {
+      throw Exception('Erreur de déchiffrement: ${response.body}');
+    }
+  }
+
   // Méthode pour authentifier le réceptionniste
   Future<void> _authenticate() async {
     // Vérifie que le champ mot de passe n'est pas vide
@@ -75,42 +88,54 @@ class _ReceptionistAuthScreenState extends State<ReceptionistAuthScreen> {
           .where('name', isEqualTo: widget.receptionistName)
           .get();
 
-      if (receptionistQuery.docs.isEmpty) {
+      if (receptionistQuery.docs.isNotEmpty) {
+        final receptionistDoc = receptionistQuery.docs.first;
+        final receptionistData = receptionistDoc.data();
+        final storedEncryptedPassword = receptionistData['password'];
+
+        if (storedEncryptedPassword != null && storedEncryptedPassword.isNotEmpty) {
+          try {
+            // Déchiffre le mot de passe stocké et compare-le au mot de passe saisi
+            final decryptedStoredPassword = await decryptPassword(storedEncryptedPassword);
+            if (decryptedStoredPassword == _passwordController.text) {
+              // Authentification réussie : navigation vers l'écran de chat réceptionniste
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ReceptionistScreen(
+                    conversationId: widget.conversationId,
+                    receptionistName: widget.receptionistName,
+                  ),
+                ),
+              );
+            } else {
+              setState(() {
+                _error = "Mot de passe incorrect";
+                _isLoading = false;
+              });
+            }
+          } catch (e) {
+            print('Erreur de déchiffrement lors de l\'authentification réceptionniste : $e');
+            setState(() {
+              _error = "Erreur d\'authentification ou mot de passe incorrect";
+              _isLoading = false;
+            });
+          }
+        } else {
+           setState(() {
+            _error = "Mot de passe manquant dans la base de données";
+            _isLoading = false;
+           });
+        }
+      } else {
         setState(() {
           _error = "Réceptionniste non trouvé";
           _isLoading = false;
         });
-        return;
       }
-
-      final receptionistDoc = receptionistQuery.docs.first;
-      final receptionistData = receptionistDoc.data();
-
-      // Chiffre le mot de passe saisi
-      final encryptedInput = await encryptPassword(_passwordController.text);
-
-      // Vérifie le mot de passe
-      if (receptionistData['password'] != encryptedInput) {
-        setState(() {
-          _error = "Mot de passe incorrect";
-          _isLoading = false;
-        });
-        return;
-      }
-
-      // Authentification réussie : navigation vers l'écran de chat réceptionniste
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ReceptionistScreen(
-            conversationId: widget.conversationId,
-            receptionistName: widget.receptionistName,
-          ),
-        ),
-      );
     } catch (e) {
       setState(() {
-        _error = "Une erreur est survenue";
+        _error = "Une erreur est survenue lors de l\'authentification.";
         _isLoading = false;
       });
       print('Erreur d\'authentification: $e');
