@@ -6,6 +6,9 @@ import '../config/environment.dart';
 import '../config/platform_config.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+// Ajout pour la redirection web dans le même onglet
+import 'dart:html' as html;
+import 'choose_role_screen.dart';
 
 // ==========================
 // receptionist_screen.dart : Écran de chat pour le réceptionniste
@@ -62,14 +65,23 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
   bool _isTyping = false;
   // Indique si la conversation a été escaladée
   bool _isConversationEscalated = false;
+  // Ajouter dans _ReceptionistScreenState :
+  Stream<DocumentSnapshot>? _conversationStream;
 
   @override
   void initState() {
     super.initState();
-    // Démarre l'écoute des messages en temps réel
     _listenToMessages();
-    // Vérifie si la conversation est escaladée
-    _checkEscalationStatus();
+    // Synchronisation temps réel de l'escalade
+    _conversationStream = FirebaseFirestore.instance.collection('conversations').doc(widget.conversationId).snapshots();
+    _conversationStream!.listen((doc) {
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        setState(() {
+          _isConversationEscalated = data['isEscalated'] == true;
+        });
+      }
+    });
   }
 
   // Méthode pour écouter les messages en temps réel d'une conversation
@@ -80,19 +92,6 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
         .collection('messages')
         .orderBy('timestamp')
         .snapshots();
-  }
-
-  // Méthode pour vérifier si la conversation a été escaladée
-  Future<void> _checkEscalationStatus() async {
-    final doc = await FirebaseFirestore.instance
-        .collection('conversations')
-        .doc(widget.conversationId)
-        .get();
-    if (doc.exists) {
-      setState(() {
-        _isConversationEscalated = doc.data()?['isEscalated'] == true;
-      });
-    }
   }
 
   // Méthode pour envoyer un message dans la conversation
@@ -315,16 +314,21 @@ class _ReceptionistScreenState extends State<ReceptionistScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () {
-              // Nettoyer les données de session
-              SharedPreferences.getInstance().then((prefs) {
-                prefs.remove('clientNom');
-                prefs.remove('clientPrenom');
-                prefs.remove('clientHotelId');
-                prefs.remove('clientHotelName');
-              });
-              // Rediriger vers la page de connexion
-              PlatformConfig.navigateToUrl(Environment.webAppUrl, context);
+            onPressed: () async {
+              SharedPreferences prefs = await SharedPreferences.getInstance();
+              await prefs.remove('clientNom');
+              await prefs.remove('clientPrenom');
+              await prefs.remove('clientHotelId');
+              await prefs.remove('clientHotelName');
+              if (kIsWeb) {
+                // Rediriger dans le même onglet
+                html.window.location.href = Environment.webAppUrl;
+              } else {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (context) => ChooseRoleScreen()),
+                  (Route<dynamic> route) => false,
+                );
+              }
             },
             tooltip: 'Déconnexion',
           ),

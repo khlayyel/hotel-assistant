@@ -248,6 +248,10 @@ class ChatScreenState extends State<ChatScreen> {
   String? _resumeConversation;
   // Liste des noms de réceptionnistes de l'hôtel sélectionné
   List<String> _receptionistNames = [];
+  // Ajouter un booléen _showWaitingReceptionist et afficher un widget d'attente si true, le passer à false quand le réceptionniste rejoint.
+  bool _showWaitingReceptionist = true;
+  // Stream pour écouter les changements dans le document de conversation
+  Stream<DocumentSnapshot>? _conversationStream;
 
   // Méthode appelée à l'initialisation du widget
   @override
@@ -301,6 +305,21 @@ class ChatScreenState extends State<ChatScreen> {
       _loadClientInfo();
       _hotelSearchController.addListener(_onHotelInputChanged);
     }
+
+    // Si _conversationId est obtenu, écoute les changements dans le document de conversation
+    if (_conversationId != null) {
+      _conversationStream = FirebaseFirestore.instance.collection('conversations').doc(_conversationId).snapshots();
+      _conversationStream!.listen((doc) {
+        if (doc.exists) {
+          final data = doc.data() as Map<String, dynamic>;
+          setState(() {
+            _isConversationEscalated = data['isEscalated'] == true;
+            _assignedReceptionistName = data['assignedReceptionist']?['name'];
+            if (_assignedReceptionistName != null) _showWaitingReceptionist = false;
+          });
+        }
+      });
+    }
   }
 
   // Méthode pour charger les messages d'une conversation depuis Firestore
@@ -336,6 +355,7 @@ class ChatScreenState extends State<ChatScreen> {
       setState(() {
         _isConversationEscalated = data['isEscalated'] == true;
         _assignedReceptionistName = data['assignedReceptionist']?['name'];
+        if (_assignedReceptionistName != null) _showWaitingReceptionist = false;
       });
     }
   }
@@ -623,7 +643,6 @@ class ChatScreenState extends State<ChatScreen> {
       'clientPrenom': _clientPrenom,
       'clientHotelId': _selectedHotelId,
       'clientHotelName': _selectedHotelName,
-      'receptionnisteNom': null,
     });
     setState(() {
       _conversationId = docRef.id;
@@ -1008,7 +1027,7 @@ Voici l'historique :
                 headers: {'Content-Type': 'application/json'},
                 body: jsonEncode({
                   'title': 'Nouvelle conversation client',
-                  'body': 'Un client a besoin de votre assistance !\n\nRésumé de la conversation :\n$summary\n\nAccéder à la conversation : $conversationLink',
+                  'body': 'Un client a besoin de votre assistance !\n\nNom du client : ' + (_clientPrenom ?? '') + ' ' + (_clientNom ?? '') + '\nRésumé de la conversation :\n$summary\n\nAccéder à la conversation : $conversationLink',
                   'conversationId': _conversationId,
                   'emails': emails,
                   'conversationLink': conversationLink
@@ -1200,6 +1219,19 @@ Voici l'historique :
                           ],
                         ),
                       ),
+                    if (_showWaitingReceptionist) ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CircularProgressIndicator(),
+                            SizedBox(width: 12),
+                            Text('Merci de patienter, un réceptionniste va vous rejoindre...', style: TextStyle(color: Colors.white, fontSize: 16)),
+                          ],
+                        ),
+                      ),
+                    ],
                     Container(
                       height: MediaQuery.of(context).size.height * 0.55,
                       child: StreamBuilder<QuerySnapshot>(
@@ -1209,9 +1241,21 @@ Voici l'historique :
                             return Center(child: CircularProgressIndicator());
                           }
                           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                            return ListView(
-                              controller: _scrollController,
-                              children: [],
+                            return Column(
+                              children: [
+                                ListView(
+                                  controller: _scrollController,
+                                  shrinkWrap: true,
+                                  children: [],
+                                ),
+                                SizedBox(height: 20),
+                                ElevatedButton(
+                                  onPressed: () async {
+                                    if (_conversationId != null) await _loadConversationMessages(_conversationId!);
+                                  },
+                                  child: Text('Recharger l\'historique'),
+                                ),
+                              ],
                             );
                           }
                           final docs = snapshot.data!.docs;

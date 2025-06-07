@@ -14,6 +14,10 @@ const fetch = require('node-fetch');
 const nodemailer = require('nodemailer');
 // Importation de crypto-js pour le chiffrement/déchiffrement des mots de passe
 const CryptoJS = require('crypto-js');
+// Importation de firebase-admin pour la gestion des réceptionnistes
+const admin = require('firebase-admin');
+// Importation de service-account.json pour la connexion à Firebase
+const serviceAccount = require('./service-account.json');
 // Création de l'application Express
 const app = express();
 // Définition du port d'écoute du serveur (par défaut 3000 ou depuis .env)
@@ -166,6 +170,37 @@ app.post('/api/decrypt', (req, res) => {
     res.status(400).json({ error: "Erreur de déchiffrement" });
   }
 });
+
+// ==========================
+// Libération automatique des réceptionnistes bloqués (toutes les 10 minutes)
+// ==========================
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+}
+
+async function liberationAutomatiqueReceptionnistes() {
+  const hotelsSnap = await admin.firestore().collection('hotels').get();
+  for (const hotelDoc of hotelsSnap.docs) {
+    const receptionistsSnap = await hotelDoc.ref.collection('receptionists').where('isAvailable', '==', false).get();
+    for (const recDoc of receptionistsSnap.docs) {
+      const data = recDoc.data();
+      if (data.currentConversationId) {
+        const convRef = admin.firestore().collection('conversations').doc(data.currentConversationId);
+        const convDoc = await convRef.get();
+        if (!convDoc.exists || !convDoc.data().isEscalated) {
+          await recDoc.ref.update({ isAvailable: true, currentConversationId: null });
+          console.log(`Réceptionniste ${data.name} libéré automatiquement (hôtel: ${hotelDoc.id})`);
+        }
+      }
+    }
+  }
+  console.log('Libération automatique terminée');
+}
+
+// Appelle cette fonction toutes les 10 minutes
+setInterval(liberationAutomatiqueReceptionnistes, 10 * 60 * 1000);
 
 // ==========================
 // Démarrage du serveur Express

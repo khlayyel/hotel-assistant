@@ -58,7 +58,7 @@ Le projet consiste à développer une solution complète d'assistant virtuel pou
 - **Base de données** : Firestore (NoSQL, temps réel).
 - **Notifications** : Email (réceptionnistes), Firebase Cloud Messaging (optionnel).
 - **IA** : Intégration GroqCloud (API LLM, prompt engineering).
-- **Déploiement** : Vercel (frontend web), Render/Railway/Heroku (backend), Play Store (mobile, optionnel).
+- **Déploiement** : Vercel (frontend web), Render (backend), Play Store (mobile, optionnel).
 
 ---
 
