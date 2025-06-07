@@ -17,7 +17,7 @@ const CryptoJS = require('crypto-js');
 // Importation de firebase-admin pour la gestion des réceptionnistes
 const admin = require('firebase-admin');
 // Importation de service-account.json pour la connexion à Firebase
-const serviceAccount = require('./service-account.json');
+const serviceAccount = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
 // Création de l'application Express
 const app = express();
 // Définition du port d'écoute du serveur (par défaut 3000 ou depuis .env)
